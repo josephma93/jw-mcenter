@@ -1,0 +1,28 @@
+{
+  "name": "jw-mcenter",
+  "version": "1.0.0",
+  "description": "Web application designed by/for Jehovah's Witnesses to present media during meetings.",
+  "main": "index.js",
+  "scripts": {
+    "start": "caddy run",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/josephma93/jw-mcenter.git"
+  },
+  "keywords": [
+    "jw",
+    "meeting",
+    "application",
+    "multimedia",
+    "speaking",
+    "kindom-hall"
+  ],
+  "author": "Joseph Montero",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/josephma93/jw-mcenter/issues"
+  },
+  "homepage": "https://github.com/josephma93/jw-mcenter#readme"
+}

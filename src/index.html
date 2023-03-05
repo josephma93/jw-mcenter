@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>WebApp para presentar imágenes</title>
+    <!-- <link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/nes.css/2.0.0/css/nes.min.css"
+          integrity="sha512-yLfn7V0hubHgkT9/iqdUZI5uyhxIXobm6WynYpG0zRdUnDzH2DkaajPJ05CLjHVCX7RjX4UFw6ypW7sXPIr97Q=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer" /> -->
+</head>
+
+<body>
+    <h1>WebApp para presentar imágenes</h1>
+    <form id="form"
+          novalidate>
+        <label>
+            Seleccione las imagenes que desea presentar.
+            <input type="file"
+                   id="fileInput"
+                   multiple>
+        </label>
+        <fieldset id="presentationControls">
+            <button id="prevBtn"
+                    disabled>Anterior</button>
+            <button id="nextBtn"
+                    disabled>Siguiente</button>
+            <button id="presentBtn"
+                    disabled>Presentar</button>
+        </fieldset>
+    </form>
+
+    <script src="slideshow.js"
+            async></script>
+</body>
+
+</html>

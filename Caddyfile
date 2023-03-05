@@ -1,0 +1,4 @@
+localhost {
+  root * src
+  file_server
+}
