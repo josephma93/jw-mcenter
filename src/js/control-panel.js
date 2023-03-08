@@ -41,13 +41,11 @@
 
 	function onMessageRecievedFromWorker(event) {
 		console.debug("Message received from worker, event: ", event);
-		const imageWindow = window.open("", "imageWindow");
-		imageWindow.document.write("<img src='" + event.data.image + "'>");
 	}
 
 	function enableWorker() {
 		try {
-			sharedWorker = new SharedWorker("worker.js");
+			sharedWorker = new SharedWorker("js/worker.js");
 		} catch (error) {
 			alert("Falla inesperada del sistema. Recargue la pagina he intente de nuevo.");
 		}
@@ -58,11 +56,11 @@
 		});
 		messagePort = sharedWorker.port;
 		messagePort.onmessage = onMessageRecievedFromWorker;
-		messagePort.addEventListener("messageerror", function onMessageError(event) {
+		messagePort.onmessageerror = function onMessageError(event) {
 			// Fired when a MessagePort object receives a message that can't be deserialized.
 			alert("Falla inesperada del sistema. Intente ejecutar nuevamente la accion, de no funcionar recargue la pagina he intente de nuevo.");
 			console.error("Shared worker error detected. Event captured: ", JSON.stringify(event));
-		});
+		};
 	}
 
 	if (window.SharedWorker) {
