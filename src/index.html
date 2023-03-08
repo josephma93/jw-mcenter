@@ -2,39 +2,58 @@
 <html>
 
 <head>
-    <meta charset="utf-8">
-    <title>WebApp para presentar imágenes</title>
-    <!-- <link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet">
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/nes.css/2.0.0/css/nes.min.css"
-          integrity="sha512-yLfn7V0hubHgkT9/iqdUZI5uyhxIXobm6WynYpG0zRdUnDzH2DkaajPJ05CLjHVCX7RjX4UFw6ypW7sXPIr97Q=="
-          crossorigin="anonymous"
-          referrerpolicy="no-referrer" /> -->
+        <meta charset="utf-8">
+        <title>WebApp para presentar imágenes</title>
+        <style>
+                /* Style for the drop area */
+                .drop-area {
+                        border: 2px dashed gray;
+                        padding: 20px;
+                        text-align: center;
+                }
+
+                /* Style for the drag-over state */
+                .drag-over {
+                        background-color: lightgray;
+                }
+
+                /* Style for the file input label */
+                label {
+                        display: block;
+                        margin-top: 10px;
+                }
+        </style>
 </head>
 
 <body>
-    <h1>WebApp para presentar imágenes</h1>
-    <form id="form"
-          novalidate>
-        <label>
-            Seleccione las imagenes que desea presentar.
-            <input type="file"
-                   id="fileInput"
-                   multiple>
-        </label>
-        <fieldset id="presentationControls">
-            <button id="prevBtn" type="button"
-                    disabled>Anterior</button>
-            <button id="nextBtn" type="button"
-                    disabled>Siguiente</button>
-            <button id="presentBtn" type="button"
-                    disabled>Presentar</button>
-            <a href="presenter.html" target="_blank">Link</a>
-        </fieldset>
-    </form>
+        <h1>WebApp para presentar imágenes</h1>
+        <form id="form"
+              novalidate>
+                <div id="file-drop-area"
+                     class="drop-area">
+                        <input type="file"
+                               id="fileInput"
+                               accept="image/*">
+                        <label for="fileInput">Drag and drop files here or click to select</label>
+                </div>
 
-    <script src="js/control-panel.js"
-            async></script>
+                <fieldset id="presentationControls">
+                        <button id="prevBtn"
+                                type="button"
+                                disabled>Anterior</button>
+                        <button id="nextBtn"
+                                type="button"
+                                disabled>Siguiente</button>
+                        <button id="presentBtn"
+                                type="button"
+                                disabled>Presentar</button>
+                        <a href="presenter.html"
+                           target="_blank">Link</a>
+                </fieldset>
+        </form>
+
+        <script src="js/control-panel.js"
+                async></script>
 </body>
 
 </html>

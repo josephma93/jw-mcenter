@@ -68,10 +68,74 @@
 	} else {
 		alert("Su navegador no dispone de las caracteristicas necesarias para usar este sistema.");
 	}
-	
+
 	elFileInput.addEventListener("change", onFileInputChange);
 	elPrevBtn.addEventListener("click", prevImage);
 	elNextBtn.addEventListener("click", nextImage);
 	elPresentBtn.addEventListener("click", presentImages);
 
 })();
+
+
+// Get the drop area and file input elements
+const elDropArea = document.querySelector('#file-drop-area');
+const elFileInput = document.querySelector('#file-input');
+
+// Add drag and drop event listeners to the drop area
+elDropArea.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    elDropArea.classList.add('drag-over');
+});
+
+elDropArea.addEventListener('dragleave', () => {
+    elDropArea.classList.remove('drag-over');
+});
+
+elDropArea.addEventListener('drop', (event) => {
+    event.preventDefault();
+    elDropArea.classList.remove('drag-over');
+    elFileInput.files = event.dataTransfer.files;
+    validateAndDisplayImages(elFileInput.files);
+});
+
+// Add change event listener to the file input
+elFileInput.addEventListener('change', () => {
+    validateAndDisplayImages(elFileInput.files);
+});
+
+// Define a function to validate and display images
+function validateAndDisplayImages(files) {
+    // Loop through each file and validate that it's an image file
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const imageType = /^image\//;
+
+        if (!imageType.test(file.type)) {
+            alert('Please select an image file.');
+            return;
+        }
+
+        // Create an image node for the file and append it to the document body
+        const imageNode = createImageNodeFromFile(file);
+        document.body.appendChild(imageNode);
+    }
+}
+
+// Define a function to create an image node from a file
+function createImageNodeFromFile(file) {
+    const imageNode = document.createElement('img');
+    const objectUrl = URL.createObjectURL(file);
+
+    imageNode.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+    };
+
+    imageNode.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        imageNode.src = '';
+    };
+
+    imageNode.src = objectUrl;
+
+    return imageNode;
+}
