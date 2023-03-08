@@ -2,11 +2,6 @@
   "name": "jw-mcenter",
   "version": "1.0.0",
   "description": "Web application designed by/for Jehovah's Witnesses to present media during meetings.",
-  "main": "index.js",
-  "scripts": {
-    "start": "caddy run",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/josephma93/jw-mcenter.git"
@@ -24,5 +19,16 @@
   "bugs": {
     "url": "https://github.com/josephma93/jw-mcenter/issues"
   },
-  "homepage": "https://github.com/josephma93/jw-mcenter#readme"
+  "homepage": "https://github.com/josephma93/jw-mcenter#readme",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^4.9.3",
+    "vite": "^4.1.0"
+  }
 }
