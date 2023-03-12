@@ -28,7 +28,13 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "modernizr": "^3.12.0",
     "typescript": "^4.9.3",
     "vite": "^4.1.0"
+  },
+  "dependencies": {
+    "@rollup/plugin-inject": "^5.0.3",
+    "jquery": "^3.6.4",
+    "normalize.css": "^8.0.1"
   }
 }
