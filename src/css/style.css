@@ -53,16 +53,18 @@ ol {
   margin: 0 auto 1em;
 }
 
-.drop-area__input {
-  display: none;
+.drop-area:hover,
+.drop-area--drag-over {
+  background-color: lightgray;
 }
 
 .drop-area__label {
   display: block;
   padding: 20px;
+  cursor: pointer;
 }
 
-.drop-area--drag-over {
-  background-color: lightgray;
+.drop-area__input {
+  display: none;
 }
 

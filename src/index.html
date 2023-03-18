@@ -40,12 +40,19 @@
               onsubmit="return false;">
             <div id="filesDropArea"
                  class="drop-area">
-                <input type="file"
-                       id="filesInput"
-                       accept="image/*"
-                       class="drop-area__input">
-                <label for="filesInput"
-                       class="drop-area__label">Drag and drop files here or click to select.</label>
+
+                <label class="drop-area__label">
+                    <input type="file"
+                           id="filesInput"
+                           accept="image/*, video/*"
+                           class="drop-area__input"
+                           multiple>
+                    Drag and drop files here or
+                    <button type="button"
+                            onclick="filesInput.click();">click
+                    </button>
+                    to select.
+                </label>
             </div>
             <fieldset id="presentationControls">
                 <button id="prevBtn"
@@ -61,19 +68,32 @@
             </fieldset>
         </form>
         <template id="imageListItemTpl">
-            <li class="image-list__item">
-                <img class="image-list__img"
-                     src="image1.jpg"
-                     alt="Image 1">
-                <div class="image-list__buttons">
-                    <button class="image-list__button--up"
-                            aria-label="Move up"></button>
-                    <button class="image-list__button--down"
-                            aria-label="Move down"></button>
+            <li class="media-list__item">
+                <div class="media-list__media"></div>
+                <div class="media-list__buttons">
+                    <button type="button"
+                            class="media-list__button-up"
+                            aria-label="Move up">Move up</button>
+                    <button type="button"
+                            class="media-list__button-down"
+                            aria-label="Move down">Move down</button>
                 </div>
             </li>
         </template>
-        <ol class="image-list">
+        <template id="videoListItemTpl">
+            <li class="media-list__item">
+                <div class="media-list__media"></div>
+                <div class="media-list__buttons">
+                    <button type="button"
+                            class="media-list__button-up"
+                            aria-label="Move up">Move up</button>
+                    <button type="button"
+                            class="media-list__button-down"
+                            aria-label="Move down">Move down</button>
+                </div>
+            </li>
+        </template>
+        <ol id="mediaPreview" class="media-list">
         </ol>
 
     </main>

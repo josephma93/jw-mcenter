@@ -1,83 +1,44 @@
+import {handleNewFilesSelected} from "./file-handling.js";
+import {getReferencesForDropArea} from "./element-references.js";
+
 /**
- * els Elements
- * @typedef {Object} DropAreaElementReferences
- * @property {HTMLDivElement} filesDropArea
- * @property {HTMLInputElement} filesInput
+ * @typedef {DropAreaElementReferences.filesDropArea}
  */
-const els = {
-    filesDropArea: null,
-    filesInput: null,
-};
+let filesDropArea;
 
-function createImageNodeFromFile(file) {
-    const imageNode = document.createElement('img');
-    const objectUrl = URL.createObjectURL(file);
+/**
+ * @typedef {DropAreaElementReferences.filesInput}
+ */
+let filesInput;
 
-    imageNode.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-    };
-
-    imageNode.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        imageNode.src = '';
-    };
-
-    imageNode.src = objectUrl;
-
-    return imageNode;
+function onDragOverHandler(event) {
+    event.preventDefault();
+    filesDropArea.classList.add('drop-area--drag-over');
 }
 
-function handleNewFilesSelected() {
-    const {filesInput: {files: fls}} = els;
-    const files = Array.from(fls);
-
-    files.forEach(file => {
-        const imageType = /^image\//;
-
-        if (!imageType.test(file.type)) {
-            alert('Please select an image file.');
-            return;
-        }
-
-        const imageNode = createImageNodeFromFile(file);
-        document.body.appendChild(imageNode);
-    });
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-    }
+function onDragLeaveHandler() {
+    filesDropArea.classList.remove('drop-area--drag-over');
 }
 
-function setElementReferences() {
-    els.filesDropArea = document.getElementById('filesDropArea');
-    els.filesInput = document.getElementById('filesInput');
+function onChangeHandler() {
+    handleNewFilesSelected(filesInput.files);
+}
+
+function onDropHandler(event) {
+    event.preventDefault();
+    filesDropArea.classList.remove('drop-area--drag-over');
+    filesInput.files = event.dataTransfer.files;
+    onChangeHandler();
 }
 
 function setElementListeners() {
-    const {filesDropArea, filesInput} = els;
-
-    filesDropArea.addEventListener('dragover', (event) => {
-        event.preventDefault();
-        filesDropArea.classList.add('drop-area--drag-over');
-    });
-
-    filesDropArea.addEventListener('dragleave', () => {
-        filesDropArea.classList.remove('drop-area--drag-over');
-    });
-
-    filesDropArea.addEventListener('drop', (event) => {
-        event.preventDefault();
-        filesDropArea.classList.remove('drop-area--drag-over');
-        filesInput.files = event.dataTransfer.files;
-        handleNewFilesSelected(filesInput.files);
-    });
-
-    filesInput.addEventListener('change', () => {
-        handleNewFilesSelected(filesInput.files);
-    });
+    filesDropArea.addEventListener('dragover', onDragOverHandler);
+    filesDropArea.addEventListener('dragleave', onDragLeaveHandler);
+    filesDropArea.addEventListener('drop', onDropHandler);
+    filesInput.addEventListener('change', onChangeHandler);
 }
 
 export default function initDropArea() {
-    setElementReferences();
+    ({ filesDropArea, filesInput } = getReferencesForDropArea());
     setElementListeners();
 }
