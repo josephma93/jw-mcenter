@@ -8,10 +8,8 @@ let {filesInput} = getReferencesForDropArea();
  * @param {File} file - The selected file to check.
  * @returns {boolean} - True if the selected file is an image file, false otherwise.
  */
-function isImageFile(file) {
-    const imageTypes = ['jpeg', 'png', 'gif', 'bmp'];
-    const fileType = file.type.split('/')[1];
-    return imageTypes.includes(fileType);
+function isPotentialImageFile(file) {
+    return file.type.includes("image");
 }
 
 
@@ -20,76 +18,102 @@ function isImageFile(file) {
  * @param {File} file - The selected file to check
  * @returns {boolean} - Whether the file is a video file
  */
-function isVideoFile(file) {
-    const videoTypes = ['mp4', 'webm', 'ogg'];
-    const fileType = file.type.split('/')[1];
-    return videoTypes.includes(fileType);
+function isPotentialVideoFile(file) {
+    return file.type.includes("video");
 }
 
 /**
  * Takes a File and returns an image element.
  * @param {File} file - The file to be displayed.
- * @returns {HTMLImageElement} - The image element.
+ * @returns {Promise<HTMLImageElement>|Promise<File>} - A promise that when resolves to an image element if the image is
+ * supported otherwise a rejected promise with the unsupported file.
  */
-function createImageNodeFromFile(file) {
-    const imageNode = document.createElement('img');
-    const objectUrl = URL.createObjectURL(file);
+function createImageElementFromFile(file) {
+    return new Promise(function executor(resolve, reject) {
 
-    imageNode.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-    };
+        const imageNode = document.createElement('img');
+        const imageUrl = URL.createObjectURL(file);
 
-    imageNode.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        imageNode.src = '';
-    };
+        imageNode.onload = function imageLoadHandler() {
+            resolve(imageNode);
+        };
 
-    imageNode.src = objectUrl;
+        imageNode.onerror = function imageErrorHandler() {
+            URL.revokeObjectURL(imageUrl);
+            reject(file);
+        };
 
-    return imageNode;
+        imageNode.src = imageUrl;
+
+    });
 }
 
 /**
- * Takes a File and returns a muted video element.
+ * Checks if a File object of type video is supported by the browser and can be played using a video element.
+ * The function checks both the MIME type and the codec compatibility.
  * @param {File} file - The file to be played.
- * @returns {HTMLVideoElement} - The video element.
+ * @returns {Promise<HTMLVideoElement>|Promise<File>} - A Promise that resolves to the HTMLMediaElement if the video is supported.
+ * If the video is not supported, the Promise is rejected with the unsupported File object.
  */
-function createVideoElement(file) {
-    const videoNode = document.createElement('video');
-    videoNode.src = URL.createObjectURL(file);
-    // videoNode.muted = true;
-    // videoNode.controls = false;
-    videoNode.preload = 'metadata';
-    videoNode.onloadedmetadata = function () {
-        URL.revokeObjectURL(videoNode.src);
-    };
-    return videoNode;
+function createVideoElementFromFile(file) {
+    return new Promise(function executor(resolve, reject) {
+        const video = document.createElement('video');
+        const canPlay = video.canPlayType(file.type);
+
+        if (!canPlay) {
+            reject(file);
+            return;
+        }
+
+        video.onloadedmetadata = function onLoadedMetadataHandler() {
+            resolve(video);
+        };
+
+        video.onerror = function onErrorHandler() {
+            URL.revokeObjectURL(video.src);
+            reject(file);
+        };
+
+        video.src = URL.createObjectURL(file);
+    });
 }
 
-
-export function handleNewFilesSelected() {
+export async function handleNewFilesSelected() {
     const {files: fls} = filesInput;
+    /** @type {File[]} */
     const files = Array.from(fls);
 
-    const {valid: {images, videos}, invalids} = files.reduce(
-        function validateAndProcessDroppedMedia(processed, file) {
+    let images = [],
+        videos = [],
+        invalids = [];
 
-            if (isImageFile(file)) {
-                processed.valid.images.push(createImageNodeFromFile(file));
-            } else if (isVideoFile(file)) {
-                processed.valid.videos.push(createVideoElement(file));
-            } else {
-                processed.invalids.push(file);
-            }
+    const results = await Promise.allSettled(files.map(function fileToHTMLNodes(file) {
+        let result;
 
-            return processed;
+        if (isPotentialImageFile(file)) {
+            result = createImageElementFromFile(file);
+        } else if (isPotentialVideoFile(file)) {
+            result = createVideoElementFromFile(file);
+        } else {
+            result = Promise.reject(file);
         }
-        , {
-            valid: {images: [], videos: []},
-            invalids: [],
-        }
-    );
 
+        return result;
+    }));
+
+    results.forEach(function forEachFileProcessingResult(promiseResult) {
+       if (promiseResult.status === 'rejected') {
+           invalids.push(promiseResult.value);
+           return;
+       }
+
+       const element = promiseResult.value;
+       if (element instanceof HTMLImageElement) {
+           images.push(element);
+       } else {
+           videos.push(element);
+       }
+    });
 
     document.dispatchEvent(new CustomEvent('mediaSelection', {
         detail: {

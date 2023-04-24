@@ -1,47 +1,55 @@
 import initDropArea from './drop-area.js';
+import {getReferencesToMediaPreview} from "./element-references.js";
 
 /**
- * Custom event triggered when new media elements are selected.
- *
- * @event MediaSelectionEvent
- * @type {object}
- * @property {HTMLImageElement[]} detail.images - List of selected HTML img elements.
- * @property {HTMLVideoElement[]} detail.videos - List of selected HTML video elements.
- * @property {File[]} detail.invalids - List of invalid files.
+ * @typedef {TemplateElementReferences.image}
  */
+let imageMediaItemTpl;
 
 /**
- * Handles MediaSelectionEvent.
- * @param {MediaSelectionEvent} event - The MediaSelectionEvent to handle.
+ * @typedef {TemplateElementReferences.video}
+ */
+let videoMediaItemTpl;
+/**
+ * @typedef {TemplateElementReferences.mediaPreview}
+ */
+let mediaPreview;
+
+/**
+ * @param {HTMLImageElement} image
+ */
+function appendImageToMediaPreview(image) {
+    const imageTpl = imageMediaItemTpl.content.cloneNode(true);
+
+    imageTpl.querySelector('.media-list__media').src = image.src;
+    mediaPreview.appendChild(imageTpl);
+}
+
+/**
+ * @param {HTMLVideoElement} video
+ */
+function appendVideoToMediaPreview(video) {
+    const videoTpl = videoMediaItemTpl.content.cloneNode(true);
+
+    videoTpl.querySelector('.media-list__item-src').src = video.src;
+    mediaPreview.appendChild(videoTpl);
+}
+
+/**
+ * Handles the MediaSelectionEvent.
  */
 function handleMediaSelection(event) {
     // handle event logic here
     const {images, videos, invalids} = event.detail;
     console.log(images, videos, invalids);
-    const mediaList = document.getElementById('mediaPreview');
-    images.forEach(image => {
-        const mediaItem = document.importNode(
-            document.getElementById('imageListItemTpl').content,
-            true
-        );
 
-        mediaItem.querySelector('.media-list__media').replaceWith(image);
-        mediaList.appendChild(mediaItem);
-    });
-
-    videos.forEach(video => {
-        const mediaItem = document.importNode(
-            document.getElementById('videoListItemTpl').content,
-            true
-        );
-
-        mediaItem.querySelector('.media-list__media').replaceWith(video);
-        mediaList.appendChild(mediaItem);
-    });
+    images.forEach(appendImageToMediaPreview);
+    videos.forEach(appendVideoToMediaPreview);
 }
 
 $(function onDOMReady() {
     initDropArea();
+    ({image: imageMediaItemTpl, video: videoMediaItemTpl, mediaPreview} = getReferencesToMediaPreview());
     document.addEventListener('mediaSelection', handleMediaSelection);
 });
 
