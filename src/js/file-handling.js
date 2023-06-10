@@ -1,7 +1,3 @@
-import {getReferencesForDropArea} from "./element-references.js";
-
-let {filesInput} = getReferencesForDropArea();
-
 /**
  * Checks if the selected file is an image file.
  *
@@ -25,7 +21,7 @@ function isPotentialVideoFile(file) {
 /**
  * Takes a File and returns an image element.
  * @param {File} file - The file to be displayed.
- * @returns {Promise<HTMLImageElement>|Promise<File>} - A promise that when resolves to an image element if the image is
+ * @returns {Promise<HTMLImageElement|File>} - A promise that when resolves to an image element if the image is
  * supported otherwise a rejected promise with the unsupported file.
  */
 function createImageElementFromFile(file) {
@@ -52,7 +48,7 @@ function createImageElementFromFile(file) {
  * Checks if a File object of type video is supported by the browser and can be played using a video element.
  * The function checks both the MIME type and the codec compatibility.
  * @param {File} file - The file to be played.
- * @returns {Promise<HTMLVideoElement>|Promise<File>} - A Promise that resolves to the HTMLMediaElement if the video is supported.
+ * @returns {Promise<HTMLVideoElement|File>} - A Promise that resolves to the HTMLMediaElement if the video is supported.
  * If the video is not supported, the Promise is rejected with the unsupported File object.
  */
 function createVideoElementFromFile(file) {
@@ -78,10 +74,16 @@ function createVideoElementFromFile(file) {
     });
 }
 
-export async function handleNewFilesSelected() {
-    const {files: fls} = filesInput;
+/**
+ * Processes the files selected by the user checking that are supported and turning them into HTML elements that
+ * can later be attached to the DOM.
+ * @param {FileList} fls The files to process
+ * @returns {Promise<FileHandlingResult>}
+ */
+export async function handleNewFilesSelected(fls) {
     /** @type {File[]} */
     const files = Array.from(fls);
+
 
     let images = [],
         videos = [],
@@ -115,26 +117,16 @@ export async function handleNewFilesSelected() {
        }
     });
 
-    document.dispatchEvent(new CustomEvent('mediaSelection', {
-        detail: {
-            images,
-            videos,
-            invalids,
-        }
-    }));
-}
-
-/**
- * Returns an array with the video types supported by the browser.
- * @returns {string[]} The supported video types.
- */
-export function getSupportedVideoTypes() {
-    const video = document.createElement('video');
-    if (!video) {
-        return [];
-    }
-    return ['mp4', 'webm', 'ogg'].filter(type => {
-        const canPlay = video.canPlayType(`video/${type}`);
-        return canPlay === 'probably' || canPlay === 'maybe';
-    });
+    /**
+     * Media selection results.
+     * @typedef {Object} FileHandlingResult
+     * @property {HTMLImageElement[]} images An array containing all valid image files in the form of HTML image elements.
+     * @property {HTMLVideoElement[]} videos An array containing all valid video files in the form of HTML video elements.
+     * @property {File[]} invalids - An array containing all invalid files.
+     */
+    return {
+        images,
+        videos,
+        invalids,
+    };
 }

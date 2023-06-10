@@ -11,20 +11,16 @@
           type="image/svg+xml"
           href="public/icon.svg"/>
     <script src="libs/modernizr-custom.js"></script>
-        <link rel="stylesheet"
-              href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css"
-              integrity="sha512-SbiR/eusphKoMVVXysTKG/7VseWii+Y3FdHrt0EpKgpToZeemhqHeZeLWLhJutz/2ut2Vw1uQEj2MbRF+TVBUA=="
-              crossorigin="anonymous"
-              referrerpolicy="no-referrer"/>
+
     <link rel="stylesheet"
-          href="css/style.css">
+          href="css/style.scss">
 </head>
 <body>
 <noscript>
     <h1>This program requires Javascript to run properly.</h1>
     <h2>Please enable Javascript in your browser reload this page and try again.</h2>
 </noscript>
-<nav class="navbar bg-light navbar-expand fixed-top">
+<nav class="navbar bg-body-tertiary navbar-expand fixed-top">
     <div class="container-fluid">
         <div class="navbar-brand">
             <img src="public/icon.svg"
@@ -34,119 +30,166 @@
                  class="d-inline-block align-text-top">
             JW MCenter
         </div>
+        <div class="d-flex">
+            <button id="moveToPreviousImageBtn"
+                    class="btn btn-sm btn-outline-secondary me-4"
+                    type="button"
+                    disabled
+                    title="Move to previous image">
+                <i class="bi bi-skip-start-btn-fill"
+                   aria-hidden="true"></i>
+                <span class="visually-hidden">Move to previous image</span>
+            </button>
+            <button id="stopPresentingBtn"
+                    class="btn btn-sm btn-outline-danger me-4"
+                    type="button"
+                    disabled
+                    title="Stop presenting">
+                <i class="bi bi-stop-btn-fill"
+                   aria-hidden="true"></i>
+                <span class="visually-hidden">Stop presenting</span>
+            </button>
+            <button id="startPresentingBtn"
+                    class="btn btn-sm btn-primary me-4"
+                    type="button"
+                    disabled
+                    title="Start presenting">
+                <i class="bi bi-play-btn-fill"></i>
+                <span class="visually-hidden">Start presenting</span>
+            </button>
+            <button id="moveToNextImageBtn"
+                    class="btn btn-sm btn-outline-secondary"
+                    type="button"
+                    disabled
+                    title="Move to next image">
+                <i class="bi bi-skip-end-btn-fill"
+                   aria-hidden="true"></i>
+                <span class="visually-hidden">Move to next image</span>
+            </button>
+        </div>
     </div>
 </nav>
 <div class="js-req container">
-    <div class="row">
+    <div class="row align-content-center">
 
-        <aside class="col-xs-12 col-md-4 instructions">
+        <div class="col-xs-12 col-md-8">
             <h1>Welcome!</h1>
             <p>Instructions to use:</p>
             <ol>
-                <li>Select which images you want to present.</li>
-                <li>Configure in which order you want the images to be presented.</li>
-                <li>Open the presenter window.</li>
-                <li>Move the presenter window you your second monitor and then make it full screen.</li>
-                <li>You are set! Now you can start the presentation and control when you want to move the next image.
-                </li>
+                <li>Select which media you want to present.</li>
+                <li>Pick in which order you want the images to be presented.</li>
+                <li>Start the presentation.</li>
+                <li>Control the presentation and adjust the image settings.</li>
             </ol>
-        </aside>
-        <main class="col-xs-12 col-md-8">
-            <div class="row">
-                <div class="col-xs-12 col-md-6">
-                    <form novalidate
-                          onsubmit="return false;">
-                        <div id="filesDropArea"
-                             class="drop-area">
-
-                            <label class="drop-area__label">
-                                <input type="file"
-                                       id="filesInput"
-                                       accept="image/*, video/*"
-                                       class="drop-area__input"
-                                       multiple>
-                                Drag and drop files here or
-                                <button type="button"
-                                        class="btn btn-secondary"
-                                        onclick="filesInput.click();">click
-                                </button>
-                                to select.
-                            </label>
-                        </div>
-                        <fieldset id="presentationControls">
-                            <button id="prevBtn"
-                                    type="button"
-                                    class="btn"
-                                    disabled>Previous
-                            </button>
-                            <button id="nextBtn"
-                                    type="button"
-                                    class="btn"
-                                    disabled>Next
-                            </button>
-                            <a href="presenter.html"
-                               target="_blank">Open presenter window.</a>
-                        </fieldset>
-                    </form>
-                </div>
-                <div class="col-xs-12 col-md-6">
-                    <template id="imageListItemTpl">
-                        <li class="media-list__item">
-                            <img class="media-list__media"/>
-                            <div class="media-list__buttons">
-                                <button type="button"
-                                        class="btn media-list__button-up"
-                                        aria-label="Move up">Move up
-                                </button>
-                                <button type="button"
-                                        class="btn media-list__button-down"
-                                        aria-label="Move down">Move down
-                                </button>
-                            </div>
-                        </li>
-                    </template>
-                    <template id="videoListItemTpl">
-                        <li class="media-list__item">
-                            <video class="media-list__media"
-                                   muted
-                                   controls
-                                   preload="auto"
-                                   playsinline>
-                                <source class="media-list__item-src"/>
-                                <p>Your browser doesn't support HTML video.</p>
-                            </video>
-                            <div class="media-list__media"></div>
-                            <div class="media-list__buttons">
-                                <button type="button"
-                                        class="media-list__button-up"
-                                        aria-label="Move up">Move up
-                                </button>
-                                <button type="button"
-                                        class="media-list__button-down"
-                                        aria-label="Move down">Move down
-                                </button>
-                            </div>
-                        </li>
-                    </template>
-                    <ol id="mediaPreview"
-                        class="media-list">
-                    </ol>
-                </div>
+        </div>
+        <div class="col-xs-12 col-md-4 d-flex align-items-center">
+            <div id="filesDropArea"
+                 class="drop-area">
+                <label class="drop-area__label">
+                    <input type="file"
+                           id="filesInput"
+                           accept="image/*, video/*"
+                           class="drop-area__input"
+                           multiple>
+                    Drag and drop files here or
+                    <button type="button"
+                            class="btn btn-secondary"
+                            onclick="filesInput.click();">click
+                    </button>
+                    to select.
+                </label>
             </div>
-        </main>
+        </div>
+        <div class="col-xs-12">
+            <hr>
+        </div>
     </div>
-
+    <div class="row">
+        <div class="col-xs-12 col-md-6 d-none">
+            <fieldset id="presentationControls">
+                <button id="prevBtn"
+                        type="button"
+                        class="btn"
+                        disabled>Previous
+                </button>
+                <button id="nextBtn"
+                        type="button"
+                        class="btn"
+                        disabled>Next
+                </button>
+                <a href="presenter.html"
+                   target="_blank">Open presenter window.</a>
+            </fieldset>
+        </div>
+        <div class="col-xs-12">
+            <template id="mediaListItemButtons">
+                <div class="media-list__buttons text-center">
+                    <button type="button"
+                            class="btn btn-outline-light media-list__button me-4"
+                            title="Move before">
+                        <i class="bi bi-box-arrow-left"
+                           aria-hidden="true"></i>
+                        <span class="visually-hidden">Move before</span>
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-light media-list__button"
+                            title="Move after">
+                        <i class="bi bi-box-arrow-right"
+                           aria-hidden="true"></i>
+                        <span class="visually-hidden">Move after</span>
+                    </button>
+                </div>
+            </template>
+            <template id="imageListItemTpl">
+                <div class="media-list__item jsMediaListItem">
+                    <img class="media-list__media jsMediaListMedia"/>
+                    <!-- div.media-list__buttons injected here -->
+                </div>
+            </template>
+            <template id="videoListItemTpl">
+                <div class="media-list__item jsMediaListItem">
+                    <video class="media-list__media jsMediaListMedia"
+                           muted
+                           controls
+                           preload="auto"
+                           playsinline>
+                        <source class="media-list__item-src jsMediaListItemSrc"/>
+                        <p>Your browser doesn't support HTML video.</p>
+                    </video>
+                    <!-- div.media-list__buttons injected here -->
+                </div>
+            </template>
+            <p>Once the media elements have been selected they will be presented in the following order.</p>
+            <div id="mediaPreview"
+                class="media-list">
+            </div>
+        </div>
+        <div class="col-md-8 col-xs-12 d-flex justify-content-center offset-md-2">
+            TEXT
+        </div>
+    </div>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.slim.min.js"
-        integrity="sha512-fYjSocDD6ctuQ1QGIo9+Nn9Oc4mfau2IiE8Ki1FyMV4OcESUt81FMqmhsZe9zWZ6g6NdczrEMAos1GlLLAipWg=="
-        crossorigin="anonymous"
-        referrerpolicy="no-referrer"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/js/bootstrap.bundle.min.js"
-        integrity="sha512-i9cEfJwUwViEPFKdC1enz4ZRGBj8YQo6QByFTF92YXHi7waCqyexvRD75S5NVTsSiTv7rKWqG9Y5eFxmRsOn0A=="
-        crossorigin="anonymous"
-        referrerpolicy="no-referrer"></script>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="warningToast"
+         class="toast"
+         role="alert"
+         aria-live="assertive"
+         aria-atomic="true">
+        <div class="toast-header bg-warning-subtle text-dark-emphasis">
+            <i class="bi bi-exclamation-diamond-fill me-2"
+               aria-hidden="true"></i>
+            <strong class="me-auto jsToastHeader"></strong>
+            <button type="button"
+                    class="btn-close btn-close-white"
+                    data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+        </div>
+        <div class="toast-body jsToastBody"></div>
+    </div>
+</div>
 <script async
         type="module"
-        src="js/controller.js"></script>
+        src="js/main.js"></script>
 </body>
 </html>

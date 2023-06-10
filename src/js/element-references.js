@@ -19,8 +19,10 @@ export function getReferencesForDropArea() {
  * @typedef TemplateElementReferences
  * @type {object}
  * @property {!HTMLTemplateElement} image
- * @property {!HTMLTemplateElement} image
+ * @property {!HTMLTemplateElement} video
+ * @property {!HTMLTemplateElement} buttons
  * @property {!HTMLOListElement} mediaPreview
+ * @property {!HTMLDivElement} warningToast
  */
 
 /**
@@ -30,6 +32,17 @@ export function getReferencesToMediaPreview() {
     return {
         image: /** @type {HTMLTemplateElement} */ (document.getElementById('imageListItemTpl')),
         video: /** @type {HTMLTemplateElement} */ (document.getElementById('videoListItemTpl')),
+        buttons: /** @type {HTMLTemplateElement} */ (document.getElementById('mediaListItemButtons')),
         mediaPreview: /** @type {HTMLOListElement} */ (document.getElementById('mediaPreview')),
+        warningToast: /** @type {HTMLDivElement} */ (document.getElementById('warningToast')),
+    };
+}
+
+export function getReferencesToMediaControlButtons() {
+    return {
+        moveToPreviousImageBtn:  /** @type {!HTMLButtonElement} */ document.getElementById('moveToPreviousImageBtn'),
+        stopPresentingBtn:  /** @type {!HTMLButtonElement} */ document.getElementById('stopPresentingBtn'),
+        startPresentingBtn:  /** @type {!HTMLButtonElement} */ document.getElementById('startPresentingBtn'),
+        moveToNextImageBtn:  /** @type {!HTMLButtonElement} */ document.getElementById('moveToNextImageBtn'),
     };
 }
