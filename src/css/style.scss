@@ -23,6 +23,15 @@ body {
   margin: 0 auto;
 }
 
+.drop-area--drag-over {
+
+  > * {
+    // TODO: stop the flickering effect.
+    // Prevent flickering, see: https://stackoverflow.com/questions/10867506/dragleave-of-parent-element-fires-when-dragging-over-children-elements
+    pointer-events: none;
+  }
+}
+
 .drop-area__label {
   cursor: pointer;
   display: block;
@@ -35,7 +44,7 @@ body {
 
 .media-list {
   list-style: none;
-  padding: 0;
+  padding: 0 1em .5em;
   display: flex;
   overflow: auto;
   position: relative;

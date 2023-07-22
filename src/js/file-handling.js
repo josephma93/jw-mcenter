@@ -1,3 +1,16 @@
+import {Subject, from, mergeMap, map, of} from "rxjs";
+
+/**
+ * @type {Subject<File>}
+ */
+const fileSelectedBSubject = new Subject();
+
+/**
+ * Emits the files selected one at the time
+ * @type {Observable<File>}
+ */
+const $fileSelected = fileSelectedBSubject.asObservable();
+
 /**
  * Checks if the selected file is an image file.
  *
@@ -8,6 +21,29 @@ function isPotentialImageFile(file) {
     return file.type.includes("image");
 }
 
+/**
+ * Takes a File and returns an image element.
+ * @param {File} file - The file to be displayed.
+ * @returns {Promise<HTMLImageElement|File>}
+ */
+function createImageElementFromFile(file) {
+    return new Promise(function executor(resolve) {
+
+        const imageNode = document.createElement('img');
+        const imageUrl = URL.createObjectURL(file);
+
+        imageNode.onload = function imageLoadHandler() {
+            resolve(imageNode);
+        };
+
+        imageNode.onerror = function imageErrorHandler() {
+            URL.revokeObjectURL(imageUrl);
+            resolve(file);
+        };
+
+        imageNode.src = imageUrl;
+    });
+}
 
 /**
  * Checks if a selected file from an input file element is a video file
@@ -19,45 +55,18 @@ function isPotentialVideoFile(file) {
 }
 
 /**
- * Takes a File and returns an image element.
- * @param {File} file - The file to be displayed.
- * @returns {Promise<HTMLImageElement|File>} - A promise that when resolves to an image element if the image is
- * supported otherwise a rejected promise with the unsupported file.
- */
-function createImageElementFromFile(file) {
-    return new Promise(function executor(resolve, reject) {
-
-        const imageNode = document.createElement('img');
-        const imageUrl = URL.createObjectURL(file);
-
-        imageNode.onload = function imageLoadHandler() {
-            resolve(imageNode);
-        };
-
-        imageNode.onerror = function imageErrorHandler() {
-            URL.revokeObjectURL(imageUrl);
-            reject(file);
-        };
-
-        imageNode.src = imageUrl;
-
-    });
-}
-
-/**
  * Checks if a File object of type video is supported by the browser and can be played using a video element.
  * The function checks both the MIME type and the codec compatibility.
  * @param {File} file - The file to be played.
- * @returns {Promise<HTMLVideoElement|File>} - A Promise that resolves to the HTMLMediaElement if the video is supported.
- * If the video is not supported, the Promise is rejected with the unsupported File object.
+ * @returns {Promise<HTMLVideoElement|File>}
  */
 function createVideoElementFromFile(file) {
-    return new Promise(function executor(resolve, reject) {
+    return new Promise(function executor(resolve) {
         const video = document.createElement('video');
         const canPlay = video.canPlayType(file.type);
 
         if (!canPlay) {
-            reject(file);
+            resolve(file);
             return;
         }
 
@@ -67,7 +76,7 @@ function createVideoElementFromFile(file) {
 
         video.onerror = function onErrorHandler() {
             URL.revokeObjectURL(video.src);
-            reject(file);
+            resolve(file);
         };
 
         video.src = URL.createObjectURL(file);
@@ -75,58 +84,51 @@ function createVideoElementFromFile(file) {
 }
 
 /**
+ * Media selection results.
+ * @typedef {Object} SelectionResultObj
+ * @property {number} id A random unique identifier.
+ * @property {File} file The file that was selected by the user.
+ * @property {number} typeCode A type identifier. 0 means a not supported file, 1 is an image, 2 is a video.
+ * @property {HTMLImageElement | HTMLVideoElement} mediaElement HTML image or video.
+ */
+
+/**
+ * @type {Observable<SelectionResultObj>}
+ */
+export const $selectionResultObjs = $fileSelected
+    .pipe(
+        map(file => {
+            const typeCode = isPotentialImageFile(file) ? 1 : isPotentialVideoFile(file) ? 2 : 0;
+            return { typeCode, file };
+        }),
+        mergeMap(({typeCode, file}) => {
+            let result = {
+                id: Math.random(),
+                file,
+                typeCode,
+                mediaElement: null,
+            };
+            if (typeCode === 0) {
+                return of(result);
+            }
+
+            return from(typeCode === 1 ? createImageElementFromFile(file) : createVideoElementFromFile(file))
+                .pipe(
+                    map(mediaOrFile => {
+                        result.mediaElement = mediaOrFile instanceof File ? null : mediaOrFile;
+                        return result;
+                    }),
+                );
+        })
+    );
+
+/**
  * Processes the files selected by the user checking that are supported and turning them into HTML elements that
  * can later be attached to the DOM.
- * @param {FileList} fls The files to process
- * @returns {Promise<FileHandlingResult>}
+ * @param {FileList} files The files to process
  */
-export async function handleNewFilesSelected(fls) {
-    /** @type {File[]} */
-    const files = Array.from(fls);
-
-
-    let images = [],
-        videos = [],
-        invalids = [];
-
-    const results = await Promise.allSettled(files.map(function fileToHTMLNodes(file) {
-        let result;
-
-        if (isPotentialImageFile(file)) {
-            result = createImageElementFromFile(file);
-        } else if (isPotentialVideoFile(file)) {
-            result = createVideoElementFromFile(file);
-        } else {
-            result = Promise.reject(file);
-        }
-
-        return result;
-    }));
-
-    results.forEach(function forEachFileProcessingResult(promiseResult) {
-       if (promiseResult.status === 'rejected') {
-           invalids.push(promiseResult.value);
-           return;
-       }
-
-       const element = promiseResult.value;
-       if (element instanceof HTMLImageElement) {
-           images.push(element);
-       } else {
-           videos.push(element);
-       }
-    });
-
-    /**
-     * Media selection results.
-     * @typedef {Object} FileHandlingResult
-     * @property {HTMLImageElement[]} images An array containing all valid image files in the form of HTML image elements.
-     * @property {HTMLVideoElement[]} videos An array containing all valid video files in the form of HTML video elements.
-     * @property {File[]} invalids - An array containing all invalid files.
-     */
-    return {
-        images,
-        videos,
-        invalids,
-    };
+export function handleNewFilesSelected(files) {
+    for (const file of files) {
+        fileSelectedBSubject.next(file);
+    }
 }

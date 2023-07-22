@@ -1,5 +1,7 @@
 /** @typedef {'NOT_SUPPORTED'|'NO_PERMISSION'|'GRANTED'} PERMISSION_STATUS_KEYS */
 
+import {Subject} from "rxjs";
+
 /**
  * Enum representing permission status.
  * @public
@@ -20,6 +22,16 @@ let screenDetails = window.screen;
 let permissionStatus = PermissionStatus.NOT_SUPPORTED;
 /** @type {number} */
 let screenCount = 1;
+
+/**
+ * @type {Subject<MultiScreenStatus>}
+ */
+const multiScreenSupportSubject = new Subject();
+
+/**
+ * @type {Observable<MultiScreenStatus>}
+ */
+export const $multiScreenSupport = multiScreenSupportSubject.asObservable();
 
 function getFeaturesFromOptions(options) {
     return Object.entries(options).map(([key, value]) => `${key}=${value}`).join(',');
@@ -95,7 +107,7 @@ export function openPresenterWindow() {
     return window.open(presenterWindowUrl, '_blank', getFeaturesFromOptions(options));
 }
 
-export default function initMultiScreenPermissionWhenPossible() {
+export function initMultiScreenPermissionWhenPossible() {
     const ua = navigator.userActivation;
     if (!!ua) {
         const pollingRate = 1000;

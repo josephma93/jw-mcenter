@@ -1,17 +1,35 @@
-import {handleNewFilesSelected} from "./file-handling.js";
+import {$selectionResultObjs, handleNewFilesSelected} from "./file-handling.js";
 import {getReferencesForDropArea} from "./element-references.js";
-import {bind} from 'ramda';
-import {Subject} from 'rxjs';
+import {fromEvent, filter, Subject} from 'rxjs';
+
+// Emit a signal when the files dropped have been processed.
+const dropFilesProcessedSignal = new Subject();
+
+export const $dropFilesProcessedSignal = dropFilesProcessedSignal.asObservable();
 
 /**
- * @type {Subject<FileHandlingResult>}
+ * All files that aren't supported
+ * @type {Observable<SelectionResultObj>}
  */
-const fileSelectionSubject = new Subject();
+export const $invalidsSelected = $selectionResultObjs.pipe(
+    filter(selection => selection.typeCode === 0)
+);
 
 /**
- * @type {Observable<FileHandlingResult>}
+ * Images selected and converted into HTMLImageElements
+ * @type {Observable<SelectionResultObj>}
  */
-export const $fileSelection = fileSelectionSubject.asObservable();
+export const $imagesSelected = $selectionResultObjs.pipe(
+    filter(selection => selection.typeCode === 1)
+);
+
+/**
+ * Videos selected and converted into HTMLVideoElements
+ * @type {Observable<SelectionResultObj>}
+ */
+export const $videosSelected = $selectionResultObjs.pipe(
+    filter(selection => selection.typeCode === 2)
+);
 
 /**
  * @typedef {DropAreaElementReferences.filesDropArea}
@@ -23,6 +41,9 @@ let filesDropArea;
  */
 let filesInput;
 
+/**
+ * @param {DragEvent} event
+ */
 function onDragOverHandler(event) {
     event.preventDefault();
     filesDropArea.classList.add('drop-area--drag-over', 'bg-light');
@@ -36,11 +57,13 @@ function onDragLeaveHandler() {
  * Handles when files are selected by the user.
  */
 function onChangeHandler() {
-    handleNewFilesSelected(filesInput.files)
-        .then(bind(fileSelectionSubject.next, fileSelectionSubject));
-
+    handleNewFilesSelected(filesInput.files);
+    dropFilesProcessedSignal.next();
 }
 
+/**
+ * @param {DragEvent} event
+ */
 function onDropHandler(event) {
     event.preventDefault();
     filesDropArea.classList.remove('drop-area--drag-over', 'bg-light');
@@ -49,13 +72,14 @@ function onDropHandler(event) {
 }
 
 function setElementListeners() {
-    filesDropArea.addEventListener('dragover', onDragOverHandler);
-    filesDropArea.addEventListener('dragleave', onDragLeaveHandler);
-    filesDropArea.addEventListener('drop', onDropHandler);
-    filesInput.addEventListener('change', onChangeHandler);
+    // TODO: stop the flickering effect.
+    fromEvent(filesDropArea, 'dragover').subscribe(onDragOverHandler);
+    fromEvent(filesDropArea, 'dragleave').subscribe(onDragLeaveHandler);
+    fromEvent(filesDropArea, 'drop').subscribe(onDropHandler);
+    fromEvent(filesInput, 'change').subscribe(onChangeHandler);
 }
 
-export default function initDropArea() {
+export function initDropArea() {
     ({ filesDropArea, filesInput } = getReferencesForDropArea());
     setElementListeners();
 }

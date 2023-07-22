@@ -1,7 +1,29 @@
 import {getReferencesToMediaPreview} from "./element-references.js";
-import {$fileSelection} from "./drop-area.js";
+import {$dropFilesProcessedSignal, $imagesSelected, $invalidsSelected, $videosSelected} from "./drop-area.js";
 import {partial, pipe} from "ramda";
 import { Toast } from 'bootstrap'
+import {map, filter, toArray, merge, BehaviorSubject, tap, bufferWhen} from "rxjs";
+
+/**
+ * Preview area contents
+ * @typedef {Object} PreviewAreaContent
+ * @property {SelectionResultObj[]} images An array containing all valid image files in the form of HTML image elements.
+ * @property {SelectionResultObj[]} videos An array containing all valid video files in the form of HTML video elements.
+ */
+const PREVIEW_AREA_STATE = {
+    images: [],
+    videos: [],
+}
+
+/**
+ * @type {BehaviorSubject<PreviewAreaContent>}
+ */
+const previewAreaContentsSubject = new BehaviorSubject(PREVIEW_AREA_STATE);
+
+/**
+ * @type {Observable<PreviewAreaContent>}
+ */
+export const $previewAreaContents = previewAreaContentsSubject.asObservable();
 
 /**
  * @param {HTMLTemplateElement} template
@@ -13,23 +35,23 @@ function cloneTemplateNode(template) {
 
 /**
  * @param {function(): HTMLElement} getTplClone
- * @param {HTMLImageElement} image
+ * @param {SelectionResultObj} selection
  */
-function setImageTplSource(getTplClone, image) {
+function setImageTplSource(getTplClone, selection) {
     const imageTpl = getTplClone();
 
-    imageTpl.querySelector('.jsMediaListMedia').src = image.src;
+    imageTpl.querySelector('.jsMediaListMedia').src = selection.mediaElement.src;
     return imageTpl;
 }
 
 /**
  * @param {function(): HTMLElement} getTplClone
- * @param {HTMLVideoElement} video
+ * @param {SelectionResultObj} selection
  */
-function setVideoTplSource(getTplClone, video) {
+function setVideoTplSource(getTplClone, selection) {
     const videoTpl = getTplClone();
 
-    videoTpl.querySelector('.jsMediaListItemSrc').src = video.src;
+    videoTpl.querySelector('.jsMediaListItemSrc').src = selection.mediaElement.src;
     return videoTpl;
 }
 
@@ -95,26 +117,47 @@ function initMediaSelectionEvent(
         videoMediaItemTpl,
     });
 
-    /**
-     * @param {FileHandlingResult} selectionResult
-     */
-    function handleMediaSelection(selectionResult) {
-        const {images, videos, invalids} = selectionResult;
-        images.forEach(appendImageToMediaPreview);
-        videos.forEach(appendVideoToMediaPreview);
-
-        if (invalids.length) {
+    $invalidsSelected
+        .pipe(
+            bufferWhen(() => $dropFilesProcessedSignal),
+            filter(invalids => invalids.length > 0)
+        )
+        .subscribe(invalids => {
             warningToast.querySelector('.jsToastHeader').textContent = `Unsupported elements selected.`;
             const hasMoreThan1 = invalids.length > 1;
             warningToast.querySelector('.jsToastBody').textContent = `There ${hasMoreThan1 ? 'are' : 'is'} ${invalids.length} element${hasMoreThan1 ? 's' : ''} selected that ${hasMoreThan1 ? "are" : "is"}n't supported.`;
             Toast.getOrCreateInstance(warningToast).show();
-        }
-    }
+        });
 
-    $fileSelection.subscribe(handleMediaSelection);
+    $imagesSelected.subscribe(selection => {
+                        appendImageToMediaPreview(selection);
+                        PREVIEW_AREA_STATE.images.push(selection);
+                    })
+
+    merge(
+            $imagesSelected
+                .pipe(
+                    tap(selection => {
+                        appendImageToMediaPreview(selection);
+                        PREVIEW_AREA_STATE.images.push(selection);
+                    }),
+                ),
+            $videosSelected
+                .pipe(
+                    tap(selection => {
+                        appendVideoToMediaPreview(selection);
+                        PREVIEW_AREA_STATE.videos.push(selection);
+                    }),
+                ),
+        )
+        .pipe(
+            bufferWhen(() => $dropFilesProcessedSignal),
+            map(() => PREVIEW_AREA_STATE)
+        )
+        .subscribe(combined => previewAreaContentsSubject.next(combined));
 }
 
-export default function initMediaPreviewArea() {
+export function initMediaPreviewArea() {
     const {
         image: imageMediaItemTpl,
         video: videoMediaItemTpl,
