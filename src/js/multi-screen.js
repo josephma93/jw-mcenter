@@ -53,7 +53,7 @@ export function getMultiScreenSupportStatus() {
     return {
         screenCount,
         permissionStatus,
-        canUseMultiScreenAPI: permissionStatus === PermissionStatus.GRANTED && screenCount > 1,
+        canUseMultiScreenAPI: permissionStatus === PermissionStatus.GRANTED,
     };
 }
 
@@ -113,7 +113,8 @@ export function initMultiScreenPermissionWhenPossible() {
         const pollingRate = 1000;
         setTimeout(function pollHasBeenActive() {
             if (ua.hasBeenActive) {
-                requestMultiScreenAccess().then(console.log);
+                requestMultiScreenAccess()
+                    .then(multiScreenSupportSubject.next.bind(multiScreenSupportSubject));
             } else {
                 setTimeout(pollHasBeenActive, pollingRate);
             }

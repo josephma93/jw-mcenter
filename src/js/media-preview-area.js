@@ -2,18 +2,23 @@ import {getReferencesToMediaPreview} from "./element-references.js";
 import {$dropFilesProcessedSignal, $imagesSelected, $invalidsSelected, $videosSelected} from "./drop-area.js";
 import {partial, pipe} from "ramda";
 import { Toast } from 'bootstrap'
-import {map, filter, toArray, merge, BehaviorSubject, tap, bufferWhen} from "rxjs";
+import {map, filter, merge, BehaviorSubject, tap, bufferWhen} from "rxjs";
 
 /**
  * Preview area contents
  * @typedef {Object} PreviewAreaContent
  * @property {SelectionResultObj[]} images An array containing all valid image files in the form of HTML image elements.
  * @property {SelectionResultObj[]} videos An array containing all valid video files in the form of HTML video elements.
+ * @property {function():boolean} hasContent Returns true when there are images or videos ready to present.
  */
 const PREVIEW_AREA_STATE = {
     images: [],
     videos: [],
-}
+    hasContent() {
+        console.log(this.images.length > 0 || this.videos.length > 0, this.images.length, this.videos.length);
+      return this.images.length > 0 || this.videos.length > 0;
+    },
+};
 
 /**
  * @type {BehaviorSubject<PreviewAreaContent>}
@@ -128,12 +133,6 @@ function initMediaSelectionEvent(
             warningToast.querySelector('.jsToastBody').textContent = `There ${hasMoreThan1 ? 'are' : 'is'} ${invalids.length} element${hasMoreThan1 ? 's' : ''} selected that ${hasMoreThan1 ? "are" : "is"}n't supported.`;
             Toast.getOrCreateInstance(warningToast).show();
         });
-
-    $imagesSelected.subscribe(selection => {
-                        appendImageToMediaPreview(selection);
-                        PREVIEW_AREA_STATE.images.push(selection);
-                    })
-
     merge(
             $imagesSelected
                 .pipe(
@@ -154,7 +153,7 @@ function initMediaSelectionEvent(
             bufferWhen(() => $dropFilesProcessedSignal),
             map(() => PREVIEW_AREA_STATE)
         )
-        .subscribe(combined => previewAreaContentsSubject.next(combined));
+        .subscribe(combined => (combined.hasContent(), previewAreaContentsSubject.next(combined)));
 }
 
 export function initMediaPreviewArea() {

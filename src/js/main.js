@@ -5,12 +5,13 @@ Object.assign(window, { $: jQuery, jQuery });
 import {initDropArea} from "./drop-area";
 import {initMediaPreviewArea, $previewAreaContents} from "./media-preview-area";
 import {initMultiScreenPermissionWhenPossible, $multiScreenSupport} from "./multi-screen";
-import {combineLatest, filter} from 'rxjs';
+import {combineLatest, filter, tap} from 'rxjs';
 
 function initPresentationControls() {
     combineLatest([$previewAreaContents, $multiScreenSupport])
         .pipe(
-            filter(([previewAreaContents]) => previewAreaContents.images.length && previewAreaContents.videos.length)
+            tap(([a, b]) => console.log(a.hasContent(), b.canUseMultiScreenAPI)),
+            filter(([previewAreaContents, multiScreenStatus]) => previewAreaContents.hasContent() && multiScreenStatus.canUseMultiScreenAPI),
         )
         .subscribe(() => {
             console.log("Presentation can be enabled!!");
