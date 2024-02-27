@@ -2,12 +2,69 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+          name="viewport">
+    <meta content="ie=edge"
+          http-equiv="X-UA-Compatible">
     <title>JW MCenter presenter window.</title>
+
+    <style>
+        body, html {
+            background-color: black;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            padding: 0;
+            position: relative;
+            width: 100vw;
+        }
+
+        img {
+            display: block;
+            height: auto;
+            left: 50%;
+            max-height: 100%;
+            object-fit: contain;
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
-    <h1>Hey this is the presenter window.</h1>
+
+<img alt="Imagen Presentada"
+     class="fullscreen-media"
+     id="media"
+     src="">
+
+<script>
+    function closeWindow() {
+        window.close();
+    }
+
+    const worker = new SharedWorker('sharedWorker.js');
+    let keepOpen = setTimeout(closeWindow, 1000);
+    let parentWindowId = null;
+
+    worker.port.addEventListener('message', function (e) {
+        if (e.data.action === 'updateImage') {
+            document.getElementById('media').src = e.data.imageUrl;
+        } else if (e.data.action === 'keepAlive') {
+            if (parentWindowId === null) {
+                parentWindowId = e.data.parentWindowId;
+            } else if (parentWindowId !== e.data.parentWindowId) {
+                closeWindow();
+            }
+            if (keepOpen) {
+                clearTimeout(keepOpen);
+            }
+            keepOpen = setTimeout(closeWindow, 1000);
+        }
+    });
+
+    worker.port.start();
+</script>
 </body>
 </html>

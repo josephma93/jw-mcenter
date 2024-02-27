@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Visualizador de Imágenes</title>
+</head>
+<body>
+<input type="file" id="imageInput" multiple accept="image/*">
+<div>
+    <button id="prevButton">Anterior</button>
+    <button id="nextButton">Siguiente</button>
+    <button id="presentButton">Presentar</button>
+</div>
+<script>
+    let images = [];
+let currentIndex = 0;
+const worker = new SharedWorker('sharedWorker.js');
+
+document.getElementById('imageInput').addEventListener('change', function(e) {
+    images = Array.from(e.target.files);
+    currentIndex = 0;
+    updateWorker();
+});
+
+document.getElementById('prevButton').addEventListener('click', function() {
+    if (currentIndex > 0) {
+        currentIndex--;
+        updateWorker();
+    }
+});
+
+document.getElementById('nextButton').addEventListener('click', function() {
+    if (currentIndex < images.length - 1) {
+        currentIndex++;
+        updateWorker();
+    }
+});
+
+document.getElementById('presentButton').addEventListener('click', function() {
+    window.open('presenter.html');
+    updateWorker();
+});
+
+function updateWorker() {
+    if (images.length > 0) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            worker.port.postMessage({ action: 'updateImage', imageUrl: e.target.result });
+        };
+        reader.readAsDataURL(images[currentIndex]);
+    }
+}
+
+worker.port.start();
+
+const windowId = Math.random();
+setInterval(() => {
+    worker.port.postMessage({ action: 'keepAlive', parentWindowId: windowId });
+}, 500);
+
+</script>
+</body>
+</html>

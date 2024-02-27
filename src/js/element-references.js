@@ -38,6 +38,18 @@ export function getReferencesToMediaPreview() {
     };
 }
 
+/**
+ * @typedef MediaControlsElementReferences
+ * @type {object}
+ * @property {!HTMLButtonElement} moveToPreviousImageBtn
+ * @property {!HTMLButtonElement} stopPresentingBtn
+ * @property {!HTMLButtonElement} startPresentingBtn
+ * @property {!HTMLButtonElement} moveToNextImageBtn
+ */
+
+/**
+ * @returns {MediaControlsElementReferences} References for drop area
+ */
 export function getReferencesToMediaControlButtons() {
     return {
         moveToPreviousImageBtn:  /** @type {!HTMLButtonElement} */ document.getElementById('moveToPreviousImageBtn'),
