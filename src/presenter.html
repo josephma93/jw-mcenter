@@ -30,41 +30,108 @@
             transform: translate(-50%, -50%);
             width: 100%;
         }
+
+        #statusMessage {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 20px;
+            padding: 10px;
+            position: absolute;
+            text-align: center;
+            top: 0;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
 
+<div id="statusMessage">Initializing...</div>
 <img alt="Imagen Presentada"
      class="fullscreen-media"
      id="media"
      src="">
 
 <script>
-    function closeWindow() {
-        window.close();
-    }
+    (function IIFE() {
+        'use strict';
 
-    const worker = new SharedWorker('sharedWorker.js');
-    let keepOpen = setTimeout(closeWindow, 1000);
-    let parentWindowId = null;
+        const statusMessageElement = document.getElementById('statusMessage');
 
-    worker.port.addEventListener('message', function (e) {
-        if (e.data.action === 'updateImage') {
-            document.getElementById('media').src = e.data.imageUrl;
-        } else if (e.data.action === 'keepAlive') {
+        function updateStatusMessage(message) {
+            if (statusMessageElement) {
+                statusMessageElement.innerText = message;
+                statusMessageElement.hidden = false;
+                if (message.startsWith('Warning')) {
+                    setTimeout(() => statusMessageElement.hidden = true, 3000);
+                }
+            }
+        }
+
+        function closeWindow() {
+            updateStatusMessage('Error: Connection lost. Closing window...');
+            setTimeout(() => window.close(), 1000);
+        }
+
+        let keepOpen = setTimeout(closeWindow, 1000);
+        let parentWindowId = null;
+
+        function updateImage(imageUrl) {
+            const mediaElement = document.getElementById('media');
+            if (mediaElement) {
+                mediaElement.src = imageUrl;
+            } else {
+                updateStatusMessage('Error: Image element not found.');
+            }
+        }
+
+        function keepAlive(data) {
             if (parentWindowId === null) {
-                parentWindowId = e.data.parentWindowId;
-            } else if (parentWindowId !== e.data.parentWindowId) {
+                parentWindowId = data.parentWindowId;
+            } else if (parentWindowId !== data.parentWindowId) {
                 closeWindow();
             }
-            if (keepOpen) {
-                clearTimeout(keepOpen);
-            }
+            clearTimeout(keepOpen);
             keepOpen = setTimeout(closeWindow, 1000);
         }
-    });
 
-    worker.port.start();
+        function handleUnknownAction(action) {
+            updateStatusMessage(`Warning: Received unknown action - ${action}`);
+        }
+
+        function messagePortHandler(e) {
+            const {action, ...data} = e.data;
+            switch (action) {
+                case 'updateImage':
+                    updateImage(data.imageUrl);
+                    break;
+                case 'keepAlive':
+                    keepAlive(data);
+                    break;
+                default:
+                    handleUnknownAction(action);
+                    break;
+            }
+        }
+
+        function initializeSharedWorker() {
+            if (typeof SharedWorker === 'undefined') {
+                updateStatusMessage('Error: SharedWorker is not supported by this browser.');
+                return;
+            }
+            try {
+                const worker = new SharedWorker('sharedWorker.js');
+                worker.port.addEventListener('message', messagePortHandler);
+                worker.port.start();
+                updateStatusMessage('Worker initialized. Waiting for data...');
+            } catch (error) {
+                console.error('Failed to initialize SharedWorker:', error);
+                updateStatusMessage(`Error: Failed to initialize SharedWorker - ${error}`);
+                return null;
+            }
+        }
+
+        initializeSharedWorker();
+    })();
 </script>
 </body>
 </html>

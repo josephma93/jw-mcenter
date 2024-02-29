@@ -1,19 +1,19 @@
 <!DOCTYPE html>
-<html lang="en"
-      class="no-js"
-      data-bs-theme="dark">
+<html class="no-js"
+      data-bs-theme="dark"
+      lang="en">
 <head>
     <meta charset="UTF-8"/>
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0"/>
+    <meta content="width=device-width, initial-scale=1.0"
+          name="viewport"/>
     <title>Kingdom hall image presenter</title>
-    <link rel="icon"
-          type="image/svg+xml"
-          href="public/icon.svg"/>
+    <link href="public/icon.svg"
+          rel="icon"
+          type="image/svg+xml"/>
     <script src="libs/modernizr-custom.js"></script>
 
-    <link rel="stylesheet"
-          href="css/style.scss">
+    <link href="css/style.scss"
+          rel="stylesheet">
 </head>
 <body>
 <noscript>
@@ -23,47 +23,48 @@
 <nav class="navbar bg-body-tertiary navbar-expand fixed-top">
     <div class="container-fluid">
         <div class="navbar-brand">
-            <img src="public/icon.svg"
-                 alt="Logo"
-                 width="30"
+            <img alt="Logo"
+                 class="d-inline-block align-text-top"
                  height="30"
-                 class="d-inline-block align-text-top">
+                 src="public/icon.svg"
+                 width="30">
             JW MCenter
         </div>
         <div class="d-flex">
-            <button id="moveToPreviousImageBtn"
-                    class="btn btn-sm btn-outline-secondary me-4"
-                    type="button"
+            <button class="btn btn-sm btn-outline-secondary me-4"
                     disabled
-                    title="Move to previous image">
-                <i class="bi bi-skip-start-btn-fill"
-                   aria-hidden="true"></i>
+                    id="moveToPreviousImageBtn"
+                    title="Move to previous image"
+                    type="button">
+                <i aria-hidden="true"
+                   class="bi bi-skip-start-btn-fill"></i>
                 <span class="visually-hidden">Move to previous image</span>
             </button>
-            <button id="stopPresentingBtn"
-                    class="btn btn-sm btn-outline-danger me-4"
-                    type="button"
+            <button class="btn btn-sm btn-outline-danger me-4"
                     disabled
-                    title="Stop presenting">
-                <i class="bi bi-stop-btn-fill"
-                   aria-hidden="true"></i>
+                    id="stopPresentingBtn"
+                    title="Stop presenting"
+                    type="button">
+                <i aria-hidden="true"
+                   class="bi bi-stop-btn-fill"></i>
                 <span class="visually-hidden">Stop presenting</span>
             </button>
-            <button id="startPresentingBtn"
-                    class="btn btn-sm btn-primary me-4"
-                    type="button"
-                    disabled
-                    title="Start presenting">
+            <a id="startPresentingBtn"
+               class="btn btn-sm btn-primary disabled me-4"
+               href=""
+               target="presenterWindow"
+               title="Start presenting"
+               aria-disabled="true">
                 <i class="bi bi-play-btn-fill"></i>
                 <span class="visually-hidden">Start presenting</span>
-            </button>
-            <button id="moveToNextImageBtn"
-                    class="btn btn-sm btn-outline-secondary"
-                    type="button"
+            </a>
+            <button class="btn btn-sm btn-outline-secondary"
                     disabled
-                    title="Move to next image">
-                <i class="bi bi-skip-end-btn-fill"
-                   aria-hidden="true"></i>
+                    id="moveToNextImageBtn"
+                    title="Move to next image"
+                    type="button">
+                <i aria-hidden="true"
+                   class="bi bi-skip-end-btn-fill"></i>
                 <span class="visually-hidden">Move to next image</span>
             </button>
         </div>
@@ -79,23 +80,22 @@
                 <li>Select which media you want to present.</li>
                 <li>Pick in which order you want the images to be presented.</li>
                 <li>Start the presentation.</li>
-                <li>Control the presentation and adjust the image settings.</li>
             </ol>
         </div>
         <div class="col-xs-12 col-md-4 d-flex align-items-center">
-            <div id="filesDropArea"
-                 class="drop-area">
+            <div class="drop-area"
+                 id="filesDropArea">
                 <div class="drop-area__mask">&nbsp;</div>
                 <label class="drop-area__label">
-                    <input type="file"
-                           id="filesInput"
-                           accept="image/*, video/*"
+                    <input accept="image/*"
                            class="drop-area__input"
-                           multiple>
+                           id="filesInput"
+                           multiple
+                           type="file">
                     Drag and drop files here or
-                    <button type="button"
-                            class="btn btn-secondary"
-                            onclick="filesInput.click();">click
+                    <button class="btn btn-secondary"
+                            onclick="filesInput.click();"
+                            type="button">click
                     </button>
                     to select.
                 </label>
@@ -108,35 +108,35 @@
     <div class="row">
         <div class="col-xs-12 col-md-6 d-none">
             <fieldset id="presentationControls">
-                <button id="prevBtn"
-                        type="button"
-                        class="btn"
-                        disabled>Previous
+                <button class="btn"
+                        disabled
+                        id="prevBtn"
+                        type="button">Previous
                 </button>
-                <button id="nextBtn"
-                        type="button"
-                        class="btn"
-                        disabled>Next
+                <button class="btn"
+                        disabled
+                        id="nextBtn"
+                        type="button">Next
                 </button>
                 <a href="presenter.html"
-                   target="_blank">Open presenter window.</a>
+                   target="presenterWindow">Open presenter window.</a>
             </fieldset>
         </div>
         <div class="col-xs-12">
             <template id="mediaListItemButtons">
                 <div class="media-list__buttons text-center">
-                    <button type="button"
-                            class="btn btn-outline-light media-list__button me-4"
-                            title="Move before">
-                        <i class="bi bi-box-arrow-left"
-                           aria-hidden="true"></i>
+                    <button class="btn btn-outline-light media-list__button me-4"
+                            title="Move before"
+                            type="button">
+                        <i aria-hidden="true"
+                           class="bi bi-box-arrow-left"></i>
                         <span class="visually-hidden">Move before</span>
                     </button>
-                    <button type="button"
-                            class="btn btn-outline-light media-list__button"
-                            title="Move after">
-                        <i class="bi bi-box-arrow-right"
-                           aria-hidden="true"></i>
+                    <button class="btn btn-outline-light media-list__button"
+                            title="Move after"
+                            type="button">
+                        <i aria-hidden="true"
+                           class="bi bi-box-arrow-right"></i>
                         <span class="visually-hidden">Move after</span>
                     </button>
                 </div>
@@ -150,10 +150,10 @@
             <template id="videoListItemTpl">
                 <div class="media-list__item jsMediaListItem">
                     <video class="media-list__media jsMediaListMedia"
-                           muted
                            controls
-                           preload="auto"
-                           playsinline>
+                           muted
+                           playsinline
+                           preload="auto">
                         <source class="media-list__item-src jsMediaListItemSrc"/>
                         <p>Your browser doesn't support HTML video.</p>
                     </video>
@@ -161,36 +161,33 @@
                 </div>
             </template>
             <p>Once the media elements have been selected they will be presented in the following order.</p>
-            <div id="mediaPreview"
-                class="media-list">
+            <div class="media-list"
+                 id="mediaPreview">
             </div>
-        </div>
-        <div class="col-md-8 col-xs-12 d-flex justify-content-center offset-md-2">
-            TEXT
         </div>
     </div>
 </div>
 
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div id="warningToast"
-         class="toast"
-         role="alert"
+    <div aria-atomic="true"
          aria-live="assertive"
-         aria-atomic="true">
+         class="toast"
+         id="warningToast"
+         role="alert">
         <div class="toast-header bg-warning-subtle text-dark-emphasis">
-            <i class="bi bi-exclamation-diamond-fill me-2"
-               aria-hidden="true"></i>
+            <i aria-hidden="true"
+               class="bi bi-exclamation-diamond-fill me-2"></i>
             <strong class="me-auto jsToastHeader"></strong>
-            <button type="button"
+            <button aria-label="Close"
                     class="btn-close btn-close-white"
                     data-bs-dismiss="toast"
-                    aria-label="Close"></button>
+                    type="button"></button>
         </div>
         <div class="toast-body jsToastBody"></div>
     </div>
 </div>
 <script async
-        type="module"
-        src="js/main.js"></script>
+        src="js/main.js"
+        type="module"></script>
 </body>
 </html>
