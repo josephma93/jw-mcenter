@@ -1,0 +1,9 @@
+{
+	local_certs
+}
+
+mydev.test {
+	root * .
+	file_server
+	tls internal
+}

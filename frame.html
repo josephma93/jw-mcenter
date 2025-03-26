@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>POC - Extracción de Frame no negro en archivos de video</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f4f4f4;
+    }
+    #preview {
+      max-width: 100%;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+    }
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Extracción de un Frame no Negro</h1>
+  <p>Carga un video y se buscará un frame que tenga contenido (no solo un cuadro negro).</p>
+  <input type="file" id="videoInput" accept="video/*">
+  <p id="status"></p>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <img id="preview" alt="Frame seleccionado">
+
+  <script>
+    // Creamos el código del worker en un string
+    const workerCode = `
+      self.onmessage = function(e) {
+        // e.data es el ImageData enviado desde el hilo principal
+        const imageData = e.data;
+        const data = imageData.data;
+        let sum = 0, sumSq = 0;
+        const n = data.length / 4;
+        for (let i = 0; i < data.length; i += 4) {
+          // Calculamos el brillo como el promedio de R, G y B
+          const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
+          sum += brightness;
+          sumSq += brightness * brightness;
+        }
+        const mean = sum / n;
+        const variance = sumSq / n - mean * mean;
+        // Umbral para considerar que el frame tiene contenido visual
+        const acceptable = variance > 50;
+        self.postMessage({ variance: variance, acceptable: acceptable });
+      };
+    `;
+    // Creamos un Blob y una URL para instanciar el worker
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const worker = new Worker(URL.createObjectURL(blob));
+
+    const videoInput = document.getElementById('videoInput');
+    const statusEl = document.getElementById('status');
+    const canvas = document.getElementById('canvas');
+    const preview = document.getElementById('preview');
+
+    let video; // Elemento video oculto
+    // Lista de tiempos candidatos (en segundos) a evaluar
+    const candidateTimes = [1.0, 2.0, 2.5, 3.0];
+    let candidateIndex = 0;
+
+    videoInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const videoURL = URL.createObjectURL(file);
+      // Creamos un elemento video (no se añade al DOM, es oculto)
+      video = document.createElement('video');
+      video.src = videoURL;
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+      video.addEventListener('loadedmetadata', function() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        statusEl.textContent = 'Video cargado. Buscando frame adecuado...';
+        candidateIndex = 0;
+        checkNextCandidate();
+      });
+    });
+
+    function checkNextCandidate() {
+      if (candidateIndex >= candidateTimes.length) {
+        statusEl.textContent = 'No se encontró un frame adecuado; se usará el primer frame.';
+        candidateIndex = 0;
+      }
+      const time = candidateTimes[candidateIndex];
+      statusEl.textContent = 'Analizando frame en ' + time + ' segundos...';
+      video.currentTime = time;
+      video.addEventListener('seeked', onSeeked, { once: true });
+    }
+
+    function onSeeked() {
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // Enviamos la imagen al worker para analizarla
+      worker.postMessage(imageData);
+    }
+
+    worker.onmessage = function(e) {
+      const result = e.data;
+      if (result.acceptable) {
+        statusEl.textContent = 'Frame aceptable encontrado (varianza: ' + result.variance.toFixed(2) + ').';
+        // Mostramos el frame convertido a DataURL
+        preview.src = canvas.toDataURL();
+      } else {
+        statusEl.textContent = 'Frame en ' + candidateTimes[candidateIndex] + 's no aceptable (varianza: ' + result.variance.toFixed(2) + ').';
+        candidateIndex++;
+        checkNextCandidate();
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jehovah Witnesses Multimedia Center - Panel de Control</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
+    integrity="sha512-NhSC1YmyruXifcj/KFRWoC561YpHpc5Jtzgvbuzx5VozKpWvQ+4nXhPdFgmx8xqexRcpAglTj9sIBWINXa8x5w=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.14.1/themes/base/jquery-ui.min.css"
+    integrity="sha512-TFee0335YRJoyiqz8hA8KV3P0tXa5CpRBSoM0Wnkn7JoJx1kaq1yXL/rb8YFpWXkMOjRcv5txv+C6UluttluCQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/screens-manager.css">
+  <link rel="stylesheet" href="css/file-management.css">
+</head>
+
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <div class="instructions"></div>
+      <div class="gallery-config">
+        <button>Configuración</button>
+      </div>
+      <div class="media-gallery flex-container">
+        <div class="flex-fixed">
+          <h4>Galería de Medios</h4>
+          <div class="gallery-item">Imagen predeterminada</div>
+        </div>
+        <div class="flex-grow-scroll">
+          lista aquí
+        </div>
+      </div>
+      <div class="configuration-panel">
+        <button>Configuración</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="monitor-preview">
+        <div class="monitor-canvas">
+          <div id="canvas-container">
+            <canvas id="layoutCanvas"></canvas>
+          </div>
+          <div class="canvas-legend">
+            <span>
+              <span class="legend-box primary-screen"></span>
+              Primary Screen
+            </span>
+            <span>
+              <span class="legend-box secondary-screen"></span>
+              Secondary Screen
+            </span>
+            <span>
+              <span class="legend-box browser-window"></span>
+              Browser Window
+            </span>
+          </div>
+        </div>
+        <div class="monitor-preview-controls">
+          <div>
+            <button type="button" popovertarget="legend">Información de monitores</button>
+          </div>
+          <div>
+            <label>
+              Usar el monitor:
+              <select id="monitorSelect">
+                <option value="">ninguno</option>
+              </select>
+              para visualizar contenido.
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="presentation-controls">
+        <button id="startPresentationBtn">Iniciar Presentación</button>
+        <button>Terminar Presentación</button>
+        <button>Anterior</button>
+        <button>Siguiente</button>
+        <button>⏪ 10s</button>
+        <button>⏩ 10s</button>
+        <button>▶️/⏸️</button>
+
+      </div>
+      <div class="media-list">
+        <div class="drop-container" id="dropContainer">
+          <div class="drop-header">
+            <button id="selectFilesBtn" aria-label="Seleccionar archivos">Seleccionar Archivos</button>
+            <button id="clearListBtn" aria-label="Vaciar lista">Vaciar Lista</button>
+          </div>
+          <div class="drop-content">
+            <div id="emptyState" class="empty-state">
+              <p>No hay archivos agregados.</p>
+              <p>Arrastra y suelta archivos aquí para comenzar.</p>
+              <div class="arrow">↓</div>
+            </div>
+            <ul class="file-list" id="fileList"></ul>
+          </div>
+          <input type="file" id="fileInput" multiple accept="image/*,video/*,audio/*" style="display:none;">
+        </div>
+
+        <div id="errorDialog" title="Archivos no aceptados" style="display:none;">
+          <p>Los siguientes archivos no son compatibles:</p>
+          <ul id="errorList"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="legend" popover>
+    <button class="close-btn" popovertarget="legend" popovertargetaction="hide">
+      <span aria-hidden=”true”>❌</span>
+      <span class="sr-only">Close</span>
+    </button>
+    <table class="legend-table">
+      <tr>
+        <th>Screen #</th>
+        <th>Resolution</th>
+        <th>Primary</th>
+        <th>Browser</th>
+      </tr>
+      <tbody id="legendTableBody"></tbody>
+    </table>
+  </div>
+
+  <script type="text/html" id="legendTemplate">
+    <% screens.forEach(function forEachScreen(screen) { %>
+      <tr>
+        <td>
+          <%= screen.index + 1 %>
+        </td>
+        <td>
+          <%= screen.availWidth %>x<%= screen.availHeight %>
+        </td>
+        <td>
+          <%= screen.isPrimary ? 'Yes' : '' %>
+        </td>
+        <td>
+          <%= screen.isBrowserScreen ? 'Yes' : '' %>
+        </td>
+      </tr>
+    <% }); %>
+  </script>
+
+  <script type="text/html" id="fileItemTemplate">
+      <li class="file-item">
+          <div class="file-info">
+              <div class="preview-container">
+                    <% if (isImage) { %>
+                      <img class="preview" src="<%= blobURL %>" alt="<%= fileName %>" />
+                    <% } else if (isVideo) { %>
+                      <video class="preview" src="<%= blobURL %>" muted preload="metadata"></video>
+                    <% } else if (isAudio) { %>
+                      <audio class="preview" src="<%= blobURL %>" controls preload="metadata"></audio>
+                    <% } %>
+              </div>
+              <div class="details">
+                  <p class="original-name">Archivo: <span class="file-name"><%= fileName %></span> (<span><%= fileType %></span>)</p>
+                  <input class="editable-name" type="text" value="<%= fileName %>">
+              </div>
+          </div>
+          <div class="action-buttons">
+              <div class="controls">
+                  <button class="delete-btn" aria-label="Eliminar archivo">Eliminar</button>
+                  <button class="duplicate-btn" aria-label="Duplicar archivo">Duplicar</button>
+              </div>
+              <div class="drag-controls">
+                  <button class="move-up" aria-label="Mover hacia arriba">↑</button>
+                  <span class="drag-handle" aria-label="Mover elemento">☰</span>
+                  <button class="move-down" aria-label="Mover hacia abajo">↓</button>
+              </div>
+          </div>
+      </li>
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+    integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.14.1/jquery-ui.min.js"
+    integrity="sha512-MSOo1aY+3pXCOCdGAYoBZ6YGI0aragoQsg1mKKBHXCYPIWxamwOE7Drh+N5CPgGI5SA9IEKJiPjdfqWFWmZtRA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/7.8.1/rxjs.umd.min.js"
+    integrity="sha512-D9LDs8YUUVa4V9Gl4Zb+xqRAc7RCzooR3+zzebgK2RMu/KU+dh90pbjEEMzPiSyRSGbSp9j1pZnrO4joGa5WEg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/ejs@3.1.10/ejs.min.js"
+    integrity="sha256-FMg8nWT7/jWowLdDOFNNxtO8AcZM0Hri4lVe7Wl4DtM=" crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,183 @@
+html,
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #f4f4f4;
+}
+
+button,
+label:has(input) {
+    cursor: pointer;
+}
+
+.flex-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.flex-fixed {
+    flex: none;
+}
+
+.flex-grow-scroll {
+    flex: 1;
+    overflow: auto;
+}
+
+.container {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    grid-auto-flow: row;
+    grid-template-areas:
+        "sidebar main";
+    height: 100%;
+    overflow: hidden;
+    gap: 10px;
+}
+
+.sidebar {
+    display: grid;
+    grid-template-rows: 100px min-content 1fr min-content;
+    grid-auto-flow: row;
+    grid-template-areas:
+        "instructions"
+        "gallery-config"
+        "media-gallery"
+        "configuration-panel";
+    grid-area: sidebar;
+    background-color: #ffffff;
+    border-right: 1px solid #ccc;
+    height: 100%;
+    overflow: hidden;
+    gap: 10px;
+}
+
+.instructions {
+    grid-area: instructions;
+    padding: 10px;
+}
+
+.gallery-config {
+    grid-area: gallery-config;
+    border-color: #ccc;
+    border-style: solid;
+    border-width: 1px 0 1px 0;
+    padding: 10px;
+}
+
+.media-gallery {
+    grid-area: media-gallery;
+    overflow: hidden;
+    padding: 0 10px;
+}
+
+.configuration-panel {
+    grid-area: configuration-panel;
+    padding: 10px;
+}
+
+.gallery-item {
+    padding: 5px;
+    margin-bottom: 5px;
+    background-color: #eee;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.gallery {
+    grid-area: gallery;
+    padding: 10px;
+}
+
+.main {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 300px min-content 1fr;
+    grid-auto-flow: row;
+    grid-template-areas:
+        "monitor-preview"
+        "presentation-controls"
+        "media-list";
+    grid-area: main;
+    height: 100%;
+    overflow: hidden;
+    gap: 10px;
+    padding: 0 10px 0 0;
+}
+
+.monitor-preview {
+    grid-area: monitor-preview;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 50% 50%;
+    grid-template-rows: 1fr;
+    grid-auto-flow: column;
+    grid-template-areas:
+        "monitor-canvas preview-controls";
+}
+
+.monitor-canvas {
+    grid-area: monitor-canvas;
+    display: flex;
+    flex-wrap: wrap;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+.monitor-preview-controls {
+    grid-area: preview-controls;
+}
+
+/* .monitor-preview {
+    grid-area: monitor-preview;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 50% 1fr;
+    grid-template-rows: min-content auto;
+    gap: 0px 0px;
+    grid-template-areas:
+        "monitor-canvas preview-controls"
+        "canvas-legend preview-controls";
+}
+
+.canvas-legend {
+    grid-area: canvas-legend;
+}
+
+.monitor-canvas {
+    grid-area: monitor-canvas;
+}
+
+.monitor-preview-controls {
+    grid-area: preview-controls;
+} */
+
+.presentation-controls {
+    grid-area: presentation-controls;
+    border-color: #ccc;
+    border-style: solid;
+    border-width: 3px 0 3px 0;
+    padding: 10px 0;
+    text-align: center;
+}
+
+.media-list {
+    grid-area: media-list;
+    overflow: hidden;
+    padding: 0 0 10px;
+}
+
+.sr-only:not(:focus):not(:active) {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}

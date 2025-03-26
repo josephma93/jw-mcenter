@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Jehovah Witnesses Multimedia Center - Ventana de presentación</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* Media container fills the viewport */
+    #media-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Images and videos stretch to full width without distortion */
+    #media-container img,
+    #media-container video {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* Audio elements use default sizing */
+    #media-container audio {
+      max-width: 100%;
+    }
+
+    /* Fullscreen overlay styling */
+    #fullscreen-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 2rem;
+      text-align: center;
+      cursor: pointer;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        opacity: 0.8;
+      }
+
+      50% {
+        transform: scale(1.1);
+        opacity: 1;
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 0.8;
+      }
+    }
+
+    /* Simple status message styling */
+    #statusMessage {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/7.8.1/rxjs.umd.min.js"
+    integrity="sha512-D9LDs8YUUVa4V9Gl4Zb+xqRAc7RCzooR3+zzebgK2RMu/KU+dh90pbjEEMzPiSyRSGbSp9j1pZnrO4joGa5WEg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+  <div id="media-container">
+    <img id="defaultImage" src="https://picsum.photos/1920/1080" alt="Presentation">
+  </div>
+  <div id="fullscreen-overlay">Click to go Full Screen</div>
+  <div id="statusMessage"></div>
+  <script type="module">
+    // Import the new SharedWorker RxJS bridge module.
+    import { initSharedWorkerRxBridge } from "./js/shared-worker-bridge.js";
+    import { interval, fromEvent, tap } from rxjs;
+
+    // Initialize the SharedWorker and obtain all communication channels.
+    const channels = initSharedWorkerRxBridge();
+
+    // Global reference for the current media element (video/audio/image)
+    let currentMediaElement = null;
+    // Global variable to store the media duration (computed once per media load)
+    let currentMediaDuration = 0;
+
+    /**
+     * Updates the status message displayed on the screen.
+     * @param {string} message The message to display.
+     */
+    function updateStatusMessage(message) {
+      const statusDiv = document.getElementById('statusMessage');
+      if (statusDiv) {
+        statusDiv.innerText = message;
+        statusDiv.style.display = 'block';
+      }
+    }
+
+    /**
+     * Requests fullscreen mode for the document.
+     * @returns {Promise<void>} A promise that resolves when fullscreen is activated.
+     */
+    function requestFullscreen() {
+      const docElem = document.documentElement;
+      if (docElem.requestFullscreen) return docElem.requestFullscreen();
+      else if (docElem.webkitRequestFullscreen) return docElem.webkitRequestFullscreen();
+      else if (docElem.msRequestFullscreen) return docElem.msRequestFullscreen();
+      return Promise.reject('Fullscreen API not supported.');
+    }
+
+    // Subscribe to channels for control commands coming from the control panel.
+
+    channels.updateMediaChannel.on.subscribe(data => {
+      // Expected data: { mediaUrl, mediaType } where mediaType is "image", "video", or "audio"
+      updateMediaElement(data.mediaUrl, data.mediaType);
+    });
+
+    channels.playChannel.on.subscribe(() => {
+      if (currentMediaElement && typeof currentMediaElement.play === 'function') {
+        currentMediaElement.play();
+      }
+    });
+
+    channels.pauseChannel.on.subscribe(() => {
+      if (currentMediaElement && typeof currentMediaElement.pause === 'function') {
+        currentMediaElement.pause();
+      }
+    });
+
+    channels.fastForwardChannel.on.subscribe(() => {
+      if (currentMediaElement && typeof currentMediaElement.currentTime !== 'undefined') {
+        const duration = currentMediaElement.duration || Infinity;
+        currentMediaElement.currentTime = Math.min(currentMediaElement.currentTime + 10, duration);
+      }
+    });
+
+    channels.rewindChannel.on.subscribe(() => {
+      if (currentMediaElement && typeof currentMediaElement.currentTime !== 'undefined') {
+        currentMediaElement.currentTime = Math.max(currentMediaElement.currentTime - 10, 0);
+      }
+    });
+
+    // Handle the ping-pong mechanism.
+    // Respond to incoming pings with a pong.
+    channels.pingChannel.on.subscribe(() => {
+      channels.pongChannel.send.next({ timestamp: Date.now() });
+    });
+
+    // Track pings for orphan detection.
+    let lastPing = Date.now();
+    channels.pingChannel.on.subscribe(() => {
+      lastPing = Date.now();
+    });
+    // If no ping is received for more than 5 seconds, close the presenter window.
+    setInterval(() => {
+      if (Date.now() - lastPing > 5000) {
+        updateStatusMessage('No ping received. Closing presenter.');
+        console.warn('No ping received for a while. Closing presenter.');
+        window.close();
+      }
+    }, 1000);
+
+    // If a video or audio element is active, send media time updates every 200ms.
+    interval(200).subscribe(() => {
+      if (currentMediaElement &&
+        (currentMediaElement.tagName === 'VIDEO' || currentMediaElement.tagName === 'AUDIO')) {
+        channels.mediaTimeUpdateChannel.send.next({
+          currentTime: currentMediaElement.currentTime,
+          duration: currentMediaDuration,
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    // Wrap fullscreen overlay click using RxJS.
+    const overlay = document.getElementById('fullscreen-overlay');
+    fromEvent(overlay, 'click').pipe(
+      tap(() => {
+        requestFullscreen().then(() => overlay.style.display = 'none')
+          .catch(err => console.error('Fullscreen error:', err));
+      })
+    ).subscribe();
+
+    // Listen for fullscreen change events.
+    fromEvent(document, 'fullscreenchange').subscribe(() => {
+      if (document.fullscreenElement) {
+        overlay.style.display = 'none';
+      } else {
+        overlay.style.display = 'flex';
+      }
+    });
+
+    /**
+     * Updates the media element in the presentation.
+     * @param {string} mediaUrl URL of the media to display.
+     * @param {string} mediaType Type of the media ("image", "video", or "audio").
+     */
+    function updateMediaElement(mediaUrl, mediaType) {
+      const mediaContainer = document.getElementById('media-container');
+      mediaContainer.innerHTML = ''; // Clear previous content
+      let element;
+      if (mediaType === 'video') {
+        element = document.createElement('video');
+        element.src = mediaUrl;
+        element.autoplay = true;
+      } else if (mediaType === 'audio') {
+        element = document.createElement('audio');
+        element.src = mediaUrl;
+        element.autoplay = true;
+      } else {
+        // Default to image if mediaType is not "video" or "audio"
+        element = document.createElement('img');
+        element.src = mediaUrl;
+        element.alt = 'Presentation Media';
+      }
+      element.style.width = '100%';
+      element.style.height = 'auto';
+      element.style.objectFit = 'contain';
+      mediaContainer.appendChild(element);
+      currentMediaElement = element;
+      // Compute and store duration for video or audio.
+      if (mediaType === 'video' || mediaType === 'audio') {
+        element.addEventListener('loadedmetadata', () => {
+          currentMediaDuration = element.duration;
+        });
+      } else {
+        currentMediaDuration = 0;
+      }
+    }
+  </script>
+</body>
+
+</html>

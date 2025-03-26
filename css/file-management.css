@@ -1,0 +1,235 @@
+.drop-container {
+    border: 2px dashed #aaa;
+    border-radius: 5px;
+    padding: 0;
+    background: #fff;
+    position: relative;
+    transition: all 0.3s ease;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.drop-container.dragover {
+    background-color: #e9e9e9;
+    border-color: #888;
+    color: #333;
+}
+
+.drop-container.dragover .drop-header {
+    background: transparent;
+}
+
+.drop-header {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    z-index: 10;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+#selectFilesBtn,
+#clearListBtn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-size: 1em;
+}
+
+#selectFilesBtn {
+    background: #28a745;
+    color: #fff;
+}
+
+#selectFilesBtn:hover {
+    background: #218838;
+}
+
+#clearListBtn {
+    background: #dc3545;
+    color: #fff;
+    margin-left: 10px;
+}
+
+#clearListBtn:hover {
+    background: #c82333;
+}
+
+.drop-content {
+    padding: 10px;
+    text-align: center;
+    color: #555;
+}
+
+.empty-state {
+    text-align: center;
+    color: #888;
+    font-style: italic;
+    padding: 40px 10px;
+}
+
+.empty-state .arrow {
+    display: inline-block;
+    font-size: 24px;
+    margin-top: 10px;
+    animation: pulsate 1s infinite;
+}
+
+@keyframes pulsate {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: translateY(5px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.file-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.file-item {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: box-shadow 0.3s ease;
+
+    + .file-item {
+        margin-top: 10px;
+    }
+}
+
+.file-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.sortable-placeholder {
+    border: 2px dashed #ccc;
+    background: #f9f9f9;
+    height: 104px;
+    margin: 10px 0;
+    border-radius: 5px;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    overflow: hidden;
+    margin-right: 10px;
+}
+
+.preview-container {
+    margin-right: 10px;
+}
+
+.preview {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+.details {
+    overflow: hidden;
+}
+
+.details p {
+    margin: 0 0 5px 0;
+    display: flex;
+
+    span {
+        display: inline-block;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    .file-name {
+        flex: 1;
+        padding-left: 0.1em;
+        text-overflow: ellipsis;
+    }
+}
+
+.editable-name {
+    width: calc(100% - 10px);
+    border: 1px solid #ccc;
+    padding: 4px;
+    font-size: 0.9em;
+    border-radius: 3px;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    align-items: center;
+}
+
+.drag-controls,
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.drag-controls button,
+.controls button {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-size: 0.9em;
+}
+
+.drag-controls button:hover,
+.controls button:hover {
+    background: #ccc;
+}
+
+.drag-handle {
+    cursor: grab;
+    font-size: 20px;
+    padding: 0 5px;
+    user-select: none;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.controls button {
+    background: #007BFF;
+    color: #fff;
+}
+
+.controls button:hover {
+    background: #0056b3;
+}
+
+#errorDialog ul {
+    padding-left: 20px;
+    margin: 0;
+}
