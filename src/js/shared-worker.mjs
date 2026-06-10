@@ -31,12 +31,14 @@ function broadcastMessage(message, senderPort) {
     }
 }
 
-function onconnect(event) {
+// Module workers don't expose top-level function declarations as global
+// event handlers, so the handler must be assigned to `self` explicitly.
+self.onconnect = function onconnect(event) {
     const port = event.ports[0];
     ports.push(port);
 
     // Immediately send the latest message for each code to the new port
-    for (const code in Object.keys(latestMessages)) {
+    for (const code of Object.keys(latestMessages)) {
         try {
             port.postMessage(latestMessages[code]);
         } catch (err) {

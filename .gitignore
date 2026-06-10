@@ -333,3 +333,6 @@ $RECYCLE.BIN/
 # Playwright artifacts
 test-results/
 playwright-report/
+
+# Machine-specific preview config (contains absolute paths)
+.claude/launch.json

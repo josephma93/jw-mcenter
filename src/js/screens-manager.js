@@ -1,4 +1,4 @@
-const {
+import {
     BehaviorSubject,
     distinctUntilChanged,
     fromEvent,
@@ -7,7 +7,7 @@ const {
     shareReplay,
     switchMap,
     withLatestFrom,
-} = rxjs;
+} from 'rxjs';
 
 // Global BehaviorSubject for the selected monitor
 const selectedMonitorSubject = new BehaviorSubject(null);

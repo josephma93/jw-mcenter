@@ -1,17 +1,15 @@
-const {
+import {
     BehaviorSubject,
     Subject,
     from,
     fromEvent,
-    partition
-} = rxjs;
-const {
+    partition,
     buffer,
     filter,
     map,
     mergeMap,
     tap,
-} = rxjs.operators;
+} from 'rxjs';
 
 const IS_IMAGE = 'isImage';
 const IS_VIDEO = 'isVideo';

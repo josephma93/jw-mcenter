@@ -19,8 +19,7 @@
  * Call the exported method `initSharedWorkerRxBridge` to initialize the SharedWorker and obtain all channels.
  */
 
-import { Subject, fromEvent } from 'rxjs';
-import { filter, map } from 'rxjs/operators';
+import { Subject, fromEvent, filter, map } from 'rxjs';
 
 /**
  * Action codes for communication between control panel and presenter.

@@ -1,131 +1,47 @@
-let $startPresentationBtn;
-
-// pairwise(),
-// tap(([prev, curr]) => {
-//     if (currentPresenterMonitorIndex != null) {
-//         return;
-//     }
-//     const removedMonitors = prev.filter(
-//         prevMonitor => !curr.some(currMonitor => currMonitor.index === prevMonitor.index)
-//     );
-//     if (removedMonitors.length > 0) {
-//         console.log('Removed monitors:', removedMonitors);
-//         if (removedMonitors.some(m => m.index === currentPresenterMonitorIndex)) {
-//             console.warn('The monitor used for presentation has been removed.');
-//             currentPresenterMonitorIndex = null;
-//             if (presentationWindow && !presentationWindow.closed) {
-//                 presentationWindow.close();
-//             }
-//             alert('The monitor used for presentation has been removed.');
-//         }
-//     }
-//     if (curr.length === 1) {
-//         console.log('Only one monitor available.');
-//         // Additional handling for single-monitor case can be added here.
-//     }
-// }),
-
-// Import the SharedWorker RxJS bridge module.
-import { initSharedWorkerRxBridge } from './js/sharedWorkerRxBridge.js';
-import { fromEvent, interval } from rxjs;
-
-// Initialize the SharedWorker channels.
-const channels = initSharedWorkerRxBridge();
-
-// UI elements
-const statusDiv = document.getElementById('status');
-const updateMediaBtn = document.getElementById('updateMedia');
-const mediaUrlInput = document.getElementById('mediaUrl');
-const mediaTypeSelect = document.getElementById('mediaType');
-const playBtn = document.getElementById('play');
-const pauseBtn = document.getElementById('pause');
-const fastForwardBtn = document.getElementById('fastForward');
-const rewindBtn = document.getElementById('rewind');
-
 /**
- * Updates the status display.
- * @param {string} message The message to show.
+ * Opens and supervises the presentation (slave) window.
+ *
+ * The presenter window closes itself when it stops receiving pings, so this
+ * module only pings while the window it opened is still alive. Closing the
+ * control panel kills the ping interval, which makes the presenter shut down
+ * on its own — the master-slave dependency the SRS requires.
  */
-function updateStatus(message) {
-    statusDiv.innerText = message;
-}
+import { initSharedWorkerRxBridge } from './shared-worker-bridge.js';
+import { interval, filter } from 'rxjs';
 
-// Send an update_media command when the Update Media button is clicked.
-fromEvent(updateMediaBtn, 'click').subscribe(() => {
-    const mediaUrl = mediaUrlInput.value.trim();
-    const mediaType = mediaTypeSelect.value;
-    if (mediaUrl === '') {
-        updateStatus('Please enter a valid media URL.');
+const PING_INTERVAL_MS = 2000;
+
+let channels = null;
+let presentationWindow = null;
+let selectedMonitor = null;
+
+function openPresentationWindow() {
+    if (!selectedMonitor) {
+        alert('Selecciona un monitor para la presentación.');
         return;
     }
-    channels.updateMediaChannel.send.next({ mediaUrl, mediaType });
-    updateStatus(`Sent update_media: ${mediaUrl} (${mediaType})`);
-});
-
-// Send play command.
-fromEvent(playBtn, 'click').subscribe(() => {
-    channels.playChannel.send.next({});
-    updateStatus('Sent play command.');
-});
-
-// Send pause command.
-fromEvent(pauseBtn, 'click').subscribe(() => {
-    channels.pauseChannel.send.next({});
-    updateStatus('Sent pause command.');
-});
-
-// Send fast_forward command.
-fromEvent(fastForwardBtn, 'click').subscribe(() => {
-    channels.fastForwardChannel.send.next({});
-    updateStatus('Sent fast_forward command.');
-});
-
-// Send rewind command.
-fromEvent(rewindBtn, 'click').subscribe(() => {
-    channels.rewindChannel.send.next({});
-    updateStatus('Sent rewind command.');
-});
-
-// Ping-Pong health-check.
-// Send a ping every 2 seconds.
-interval(200).subscribe(() => {
-    channels.pingChannel.send.next({ timestamp: Date.now() });
-});
-
-// Listen for pong responses from the presenter.
-channels.pongChannel.on.subscribe(data => {
-    updateStatus(`Received pong at ${new Date(data.timestamp).toLocaleTimeString()}`);
-});
-
-// Optionally, listen for media time updates from the presenter.
-channels.mediaTimeUpdateChannel.on.subscribe(data => {
-    console.log('Media Time Update:', data);
-});
+    const { availLeft, availTop, availWidth, availHeight } = selectedMonitor;
+    const features = `left=${availLeft},top=${availTop},width=${availWidth},height=${availHeight}`;
+    presentationWindow = window.open('presentation.html', 'presentation', features);
+    if (!presentationWindow) {
+        alert('El navegador bloqueó la ventana emergente. Permite popups para este sitio.');
+    }
+}
 
 function initialize(fileManager, screenManager) {
-    $startPresentationBtn = $('#startPresentationBtn');
-    $startPresentationBtn.on('click', function onStartPresentationBtnClicked() {
-        const selectedIndex = parseInt($monitorSelect.val(), 10);
-        if (isNaN(selectedIndex)) {
-            alert('Please select a monitor.');
-            return;
-        }
-        const selectedScreen = availableScreensData$.getValue()[selectedIndex];
-        if (!selectedScreen) return;
-        currentPresenterMonitorIndex = selectedScreen.index;
-        const features = `left=${selectedScreen.availLeft},top=${selectedScreen.availTop},width=${selectedScreen.availWidth},height=${selectedScreen.availHeight}`;
-        let url = 'presentation.html';
-        if (selectedMediaURL) {
-            url += '?media=' + encodeURIComponent(selectedMediaURL);
-        }
-        presentationWindow = window.open(url, 'presentation', features);
-        if (!presentationWindow) {
-            alert('Popup blocked. Please allow popups for this site.');
-        }
+    channels = initSharedWorkerRxBridge();
+
+    screenManager.selectedMonitor$.subscribe(monitor => {
+        selectedMonitor = monitor;
     });
 
+    interval(PING_INTERVAL_MS)
+        .pipe(filter(() => presentationWindow && !presentationWindow.closed))
+        .subscribe(() => {
+            channels.pingChannel.send.next({ timestamp: Date.now() });
+        });
 
-
+    $('#startPresentationBtn').on('click', openPresentationWindow);
 }
 
 export default {
