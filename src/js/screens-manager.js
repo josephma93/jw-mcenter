@@ -240,6 +240,16 @@ async function initializeDOMThings() {
 function requestPermissionOnFirstInteraction() {
     const EVENTS = ['click', 'keydown'];
     async function onFirstInteraction() {
+        // Not every event grants user activation (e.g. the Escape key or
+        // browser-reserved shortcuts). If the browser says there is no
+        // transient activation right now, the permission prompt is guaranteed
+        // to fail — keep waiting for a real interaction instead of burning
+        // the attempt. (isActive, not hasBeenActive: the prompt needs the
+        // transient kind, and sticky activation outlives it.)
+        const ua = navigator.userActivation;
+        if (ua && !ua.isActive) {
+            return;
+        }
         EVENTS.forEach(e => document.removeEventListener(e, onFirstInteraction, true));
         try {
             await acquireScreenDetails();
