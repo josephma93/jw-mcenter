@@ -27,12 +27,11 @@ El sistema permitirá a los usuarios seleccionar y reproducir contenido multimed
 - **Screen Change Events**: Eventos del navegador que notifican cambios en la configuración de pantallas conectadas
 - **ESM**: ECMAScript Modules, sistema de módulos estándar de JavaScript
 - **ES2024**: Especificación de ECMAScript para el año 2024, que incluye las características más recientes del lenguaje JavaScript
-- **TypeScript**: Superconjunto tipado de JavaScript que compila a JavaScript puro
-- **Bundling**: Proceso de combinar múltiples archivos de código fuente en un único archivo optimizado
+- **Import Maps**: Mecanismo nativo del navegador para resolver especificadores de módulos (p. ej. `'rxjs'`) a archivos locales, sin bundler
+- **Vendorización**: Copia de dependencias de terceros al repositorio (`src/vendor/`) para que la aplicación funcione sin CDNs ni conexión
 - **Container Queries**: Característica CSS moderna que permite aplicar estilos basados en el tamaño del contenedor, no solo de la ventana
 - **CSS Custom Properties**: Variables definidas en CSS que permiten reutilizar valores y crear temas dinámicos
 - **CSS Grid Layout**: Sistema de diseño bidimensional para CSS que permite crear layouts complejos y responsivos
-- **Workbox**: Biblioteca de JavaScript desarrollada por Google que proporciona herramientas para implementar Service Workers de manera eficiente
 
 ### 2. Descripción General
 
