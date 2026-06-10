@@ -325,3 +325,11 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/osx,linux,windows,webstorm,node
+
+### Project ###
+# Ignore the whole IDE folder, not just parts of it
+.idea/
+
+# Playwright artifacts
+test-results/
+playwright-report/

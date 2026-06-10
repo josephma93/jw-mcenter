@@ -3,7 +3,7 @@
 }
 
 mydev.test {
-	root * .
+	root * ./src
 	file_server
 	tls internal
 }
