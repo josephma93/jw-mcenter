@@ -31,17 +31,27 @@ npm install
 
 ## Running the app
 
-Any static file server over `src/` works. The app needs a secure context
-(`getScreenDetails`, SharedWorker), and `localhost` counts as one:
-
 ```sh
-node node_modules/http-server/bin/http-server src -p 4173 -c-1
+npm start    # → https://jw-mcenter.localhost
 ```
 
-Or with Caddy (HTTPS, matches production serving):
+`npm start` runs [portless](https://portless.sh/), which starts the `dev`
+script (a plain static server over `src/`) behind a local HTTPS proxy with a
+stable named URL. The app needs a secure context (`getScreenDetails`,
+SharedWorker), and both `https://*.localhost` and plain `localhost` qualify.
+
+One-time setup on a new machine (portless binds port 443 and installs a local
+CA, both need elevation once):
 
 ```sh
-caddy run    # serves ./src per the Caddyfile
+sudo npx portless proxy start --https   # or: npx portless proxy start --port 1355 --https (no sudo; URL gets :1355)
+npx portless trust                      # trust the local CA so the browser shows no warning
+```
+
+If you don't want the proxy at all, the raw server still works:
+
+```sh
+npm run dev    # plain http://localhost:8080 (or PORT=xxxx npm run dev)
 ```
 
 The app is Chromium-only by design (see SRS §2.4).
@@ -50,6 +60,8 @@ The app is Chromium-only by design (see SRS §2.4).
 
 | Command | What it does |
 |---|---|
+| `npm start` | Serve the app at `https://jw-mcenter.localhost` via portless |
+| `npm run dev` | Raw static server over `src/`, no proxy |
 | `npm test` | Playwright smoke tests: both pages boot with zero console errors, playlist add works |
 | `npm run vendor` | Regenerates `src/vendor/` from `node_modules` — run only when upgrading a dependency, commit the result |
 

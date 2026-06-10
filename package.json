@@ -4,6 +4,8 @@
   "description": "Local, browser-only multimedia control center for JW meetings. No build step: the browser runs src/ as written.",
   "private": true,
   "scripts": {
+    "dev": "http-server src -c-1 --silent",
+    "start": "portless",
     "vendor": "node tools/vendor.mjs",
     "test": "playwright test"
   },
@@ -22,6 +24,7 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "esbuild": "^0.28.0",
-    "http-server": "^14.1.1"
+    "http-server": "^14.1.1",
+    "portless": "^0.14.0"
   }
 }

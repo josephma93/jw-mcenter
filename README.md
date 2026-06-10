@@ -24,7 +24,7 @@ Este proyecto es una Aplicación Web Progresiva (PWA) diseñada específicamente
 
 - **Frontend**: HTML, CSS y JavaScript crudos — **sin paso de build**: el navegador ejecuta los archivos tal como están escritos
 - **Librerías**: jQuery, jQuery UI, RxJS, EJS (para plantillas), vendorizadas localmente en `src/vendor/` (sin CDNs, funciona offline)
-- **Servidor Web**: cualquier servidor estático; configuración incluida para Caddy Server
+- **Servidor Web**: cualquier servidor estático; en desarrollo se usa [portless](https://portless.sh/) para HTTPS con URL estable (`https://jw-mcenter.localhost`)
 
 ## Estructura del Repositorio
 
@@ -36,7 +36,7 @@ Este proyecto es una Aplicación Web Progresiva (PWA) diseñada específicamente
 
 ## Cómo Ejecutar
 
-Ver [CONTRIBUTING.md](CONTRIBUTING.md). En corto: `nvm use && npm install`, luego servir `src/` con cualquier servidor estático y abrir en un navegador Chromium.
+Ver [CONTRIBUTING.md](CONTRIBUTING.md). En corto: `nvm use && npm install && npm start`, y abrir `https://jw-mcenter.localhost` en un navegador Chromium.
 
 ## Público Objetivo
 

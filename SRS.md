@@ -61,7 +61,7 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 - Debe implementarse utilizando características modernas de JavaScript (ES2024), incluyendo pero no limitado a: ESM, generadores, async/await, top-level await, nullish coalescing, optional chaining
 - **Sin paso de build**: el navegador ejecuta directamente los archivos fuente (HTML, CSS y JavaScript crudos). No se permite compilador, transpilador ni bundler para el código de la aplicación
 - Las dependencias de terceros se gestionan con npm y se vendorizan en `src/vendor/` (sin CDNs), resolviéndose mediante import maps del navegador
-- Debe ser compatible con Caddy Server para entornos de desarrollo (especialmente para soporte HTTPS)
+- El entorno de desarrollo debe servir la aplicación sobre HTTPS con una URL estable mediante portless (`https://jw-mcenter.localhost`), garantizando el contexto seguro que requieren las APIs del navegador
 - Debe implementar características CSS de última generación como container queries, variables, custom properties y grid layouts
 - El panel de control debe ser responsivo y funcionar adecuadamente en resoluciones desde 1024×768 en adelante
 - La ventana de presentación debe mantener la relación de aspecto original de los contenidos multimedia
@@ -109,7 +109,7 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 - **REQ-SW-05**: No debe incluir polyfills o código para compatibilidad con navegadores antiguos o no basados en Chromium.
 - **REQ-SW-06**: El código de la aplicación debe ser JavaScript puro ejecutado directamente por el navegador, sin compilación ni transpilación. La detección temprana de errores se apoya en el chequeo del editor (`// @ts-check` con JSDoc, opcional) y en las pruebas de humo automatizadas.
 - **REQ-SW-07**: No debe existir paso de build. Las dependencias de terceros se declaran en `package.json`, se vendorizan localmente en `src/vendor/` (comprometidas en git) y se resuelven mediante import maps nativos del navegador. El ciclo de desarrollo es: editar archivo → recargar navegador.
-- **REQ-SW-08**: El servicio de archivos estáticos debe ser compatible con Caddy Server para entornos de desarrollo, especialmente para soportar HTTPS en desarrollo local.
+- **REQ-SW-08**: La aplicación debe poder servirse con cualquier servidor de archivos estáticos; en desarrollo se sirve sobre HTTPS mediante portless para garantizar un contexto seguro (`getScreenDetails()`, SharedWorker).
 
 #### 3.2 Requisitos Funcionales
 
@@ -204,7 +204,7 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 - **REQ-ED-01**: El entorno de desarrollo no debe tener paso de build: editar archivo → recargar navegador.
 - **REQ-ED-02**: La versión de Node (usada solo para gestión de dependencias y pruebas) debe estar fijada en `.nvmrc`.
 - **REQ-ED-03**: Las dependencias de terceros deben vendorizarse con `npm run vendor` y comprometerse en git; la aplicación no debe depender de CDNs.
-- **REQ-ED-04**: Debe ser compatible con Caddy Server para proporcionar HTTPS en entorno de desarrollo local.
+- **REQ-ED-04**: El entorno de desarrollo debe proporcionar HTTPS local mediante portless, con URL estable `https://jw-mcenter.localhost`.
 - **REQ-ED-05**: Puede usarse `// @ts-check` con anotaciones JSDoc para detección de errores en el editor, sin introducir compilación.
 - **REQ-ED-06**: Debe existir una prueba de humo automatizada (Playwright) que verifique que ambas ventanas arrancan sin errores de consola.
 
@@ -298,4 +298,5 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 | 1.1 | [Fecha actual] | Adición de requisitos de TypeScript, bundling y entorno de desarrollo | Claude 3.7 |
 | 1.2 | [Fecha actual] | Incorporación de requisitos CSS modernos y diseño responsive | Claude 3.7 |
 | 1.3 | [Fecha actual] | Inclusión de requisitos de Workbox para Service Worker y caché offline | Claude 3.7 |
-| 1.4 | 2026-06-10 | Decisión arquitectónica: sin paso de build. Se eliminan TypeScript, Vite y Workbox; se adoptan ESM nativo, import maps, vendorización con npm y pruebas de humo | joseph montero | 
+| 1.4 | 2026-06-10 | Decisión arquitectónica: sin paso de build. Se eliminan TypeScript, Vite y Workbox; se adoptan ESM nativo, import maps, vendorización con npm y pruebas de humo | joseph montero |
+| 1.5 | 2026-06-10 | Caddy Server reemplazado por portless para HTTPS de desarrollo con URL estable | joseph montero | 

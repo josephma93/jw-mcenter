@@ -1,9 +1,0 @@
-{
-	local_certs
-}
-
-mydev.test {
-	root * ./src
-	file_server
-	tls internal
-}
