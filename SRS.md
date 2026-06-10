@@ -59,8 +59,8 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 #### 2.4 Restricciones
 - La aplicación debe funcionar exclusivamente en navegadores basados en Chromium (Chrome, Edge, Opera, etc.)
 - Debe implementarse utilizando características modernas de JavaScript (ES2024), incluyendo pero no limitado a: ESM, generadores, async/await, top-level await, nullish coalescing, optional chaining
-- Debe desarrollarse utilizando TypeScript para garantizar un tipado fuerte y detección temprana de errores
-- Debe utilizar un sistema de bundling simple para producir builds livianos y optimizados
+- **Sin paso de build**: el navegador ejecuta directamente los archivos fuente (HTML, CSS y JavaScript crudos). No se permite compilador, transpilador ni bundler para el código de la aplicación
+- Las dependencias de terceros se gestionan con npm y se vendorizan en `src/vendor/` (sin CDNs), resolviéndose mediante import maps del navegador
 - Debe ser compatible con Caddy Server para entornos de desarrollo (especialmente para soporte HTTPS)
 - Debe implementar características CSS de última generación como container queries, variables, custom properties y grid layouts
 - El panel de control debe ser responsivo y funcionar adecuadamente en resoluciones desde 1024×768 en adelante
@@ -107,14 +107,9 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
   - Métodos privados y campos de clase
   - Otras características modernas disponibles en ES2024
 - **REQ-SW-05**: No debe incluir polyfills o código para compatibilidad con navegadores antiguos o no basados en Chromium.
-- **REQ-SW-06**: Debe implementarse utilizando TypeScript para garantizar un tipado fuerte y detección temprana de errores.
-- **REQ-SW-07**: Debe utilizar un sistema de bundling simple y ligero que permita:
-  - Compilación de TypeScript a JavaScript
-  - Minificación de código para producción
-  - Generación de builds livianos y optimizados
-  - Soporte para desarrollo con recarga en caliente (hot reloading)
-  - Usar Vite
-- **REQ-SW-08**: El sistema de build debe ser compatible con Caddy Server para entornos de desarrollo, especialmente para soportar HTTPS en desarrollo local.
+- **REQ-SW-06**: El código de la aplicación debe ser JavaScript puro ejecutado directamente por el navegador, sin compilación ni transpilación. La detección temprana de errores se apoya en el chequeo del editor (`// @ts-check` con JSDoc, opcional) y en las pruebas de humo automatizadas.
+- **REQ-SW-07**: No debe existir paso de build. Las dependencias de terceros se declaran en `package.json`, se vendorizan localmente en `src/vendor/` (comprometidas en git) y se resuelven mediante import maps nativos del navegador. El ciclo de desarrollo es: editar archivo → recargar navegador.
+- **REQ-SW-08**: El servicio de archivos estáticos debe ser compatible con Caddy Server para entornos de desarrollo, especialmente para soportar HTTPS en desarrollo local.
 
 #### 3.2 Requisitos Funcionales
 
@@ -158,8 +153,8 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 - **REQ-OF-02**: Debe acceder directamente a los archivos multimedia locales referenciados.
 - **REQ-OF-03**: Debe permitir la instalación como aplicación en el dispositivo (PWA).
 - **REQ-OF-04**: No debe requerir ningún servidor para su funcionamiento, operando completamente en el cliente.
-- **REQ-OF-05**: Debe implementar un Service Worker utilizando la biblioteca Workbox de Google.
-- **REQ-OF-06**: Debe utilizar las estrategias de caché de Workbox para:
+- **REQ-OF-05**: Debe implementar un Service Worker escrito a mano (sin Workbox ni generadores), coherente con la filosofía sin build del proyecto.
+- **REQ-OF-06**: Debe utilizar estrategias de caché para:
   - Almacenar en caché todos los recursos estáticos (HTML, CSS, JavaScript, imágenes de la interfaz)
   - Implementar la estrategia Cache-First para recursos estáticos
   - Implementar precaching de los recursos críticos durante la instalación
@@ -206,13 +201,12 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 - **REQ-AD-04**: Debe seguir funcionando correctamente cuando se cambia la pantalla principal del sistema.
 
 ##### 3.3.6 Entorno de Desarrollo
-- **REQ-ED-01**: El entorno de desarrollo debe utilizar TypeScript para asegurar un tipado fuerte en todo el código.
-- **REQ-ED-02**: Debe configurarse un sistema de bundling simple que genere builds optimizados y livianos.
-- **REQ-ED-03**: El sistema de compilación debe mantener la simplicidad mientras proporciona todas las herramientas necesarias para el desarrollo.
+- **REQ-ED-01**: El entorno de desarrollo no debe tener paso de build: editar archivo → recargar navegador.
+- **REQ-ED-02**: La versión de Node (usada solo para gestión de dependencias y pruebas) debe estar fijada en `.nvmrc`.
+- **REQ-ED-03**: Las dependencias de terceros deben vendorizarse con `npm run vendor` y comprometerse en git; la aplicación no debe depender de CDNs.
 - **REQ-ED-04**: Debe ser compatible con Caddy Server para proporcionar HTTPS en entorno de desarrollo local.
-- **REQ-ED-05**: Debe configurarse el compilador de TypeScript para la detección agresiva de errores (strict mode).
-- **REQ-ED-06**: El entorno debe permitir desarrollo y pruebas rápidas con recarga automática de cambios.
-- **REQ-ED-07**: Debe integrar Workbox en el proceso de build para generar automáticamente el Service Worker que proporcione funcionalidades offline.
+- **REQ-ED-05**: Puede usarse `// @ts-check` con anotaciones JSDoc para detección de errores en el editor, sin introducir compilación.
+- **REQ-ED-06**: Debe existir una prueba de humo automatizada (Playwright) que verifique que ambas ventanas arrancan sin errores de consola.
 
 ##### 3.3.7 Diseño Responsive y CSS
 - **REQ-DR-01**: El sistema debe utilizar container queries para crear componentes de interfaz que respondan al tamaño de su contenedor en lugar de solo a la ventana.
@@ -226,7 +220,7 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 
 ##### 3.3.8 Funcionamiento PWA y Offline
 - **REQ-PW-01**: La aplicación debe cumplir con todos los requisitos para ser considerada una PWA de alta calidad.
-- **REQ-PW-02**: Debe implementar un Service Worker utilizando Workbox que gestione eficientemente el caché de la aplicación.
+- **REQ-PW-02**: Debe implementar un Service Worker escrito a mano que gestione eficientemente el caché de la aplicación.
 - **REQ-PW-03**: Debe funcionar completamente sin conexión después de la primera carga, utilizando estrategias de caché apropiadas.
 - **REQ-PW-04**: Debe proporcionar un archivo de manifiesto que permita la instalación como aplicación nativa.
 - **REQ-PW-05**: Debe manejar correctamente eventos de conectividad, adaptando la interfaz para notificar al usuario sobre el estado de la conexión.
@@ -303,4 +297,5 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 | 1.0 | [Fecha actual] | Versión inicial | Claude 3.7 |
 | 1.1 | [Fecha actual] | Adición de requisitos de TypeScript, bundling y entorno de desarrollo | Claude 3.7 |
 | 1.2 | [Fecha actual] | Incorporación de requisitos CSS modernos y diseño responsive | Claude 3.7 |
-| 1.3 | [Fecha actual] | Inclusión de requisitos de Workbox para Service Worker y caché offline | Claude 3.7 | 
+| 1.3 | [Fecha actual] | Inclusión de requisitos de Workbox para Service Worker y caché offline | Claude 3.7 |
+| 1.4 | 2026-06-10 | Decisión arquitectónica: sin paso de build. Se eliminan TypeScript, Vite y Workbox; se adoptan ESM nativo, import maps, vendorización con npm y pruebas de humo | joseph montero | 

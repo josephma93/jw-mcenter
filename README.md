@@ -22,16 +22,21 @@ Este proyecto es una Aplicación Web Progresiva (PWA) diseñada específicamente
 
 ## Tecnologías Utilizadas
 
-- **Frontend**: HTML5, CSS3, JavaScript
-- **Librerías**: jQuery, jQuery UI, RxJS, EJS (para plantillas)
-- **PWA**: Service Worker para funcionamiento offline
-- **Servidor Web**: Configuración para Caddy Server
+- **Frontend**: HTML, CSS y JavaScript crudos — **sin paso de build**: el navegador ejecuta los archivos tal como están escritos
+- **Librerías**: jQuery, jQuery UI, RxJS, EJS (para plantillas), vendorizadas localmente en `src/vendor/` (sin CDNs, funciona offline)
+- **Servidor Web**: cualquier servidor estático; configuración incluida para Caddy Server
 
-## Estructura de la Aplicación
+## Estructura del Repositorio
 
-- **Panel de Control** (index.html): Interfaz principal para gestionar medios y controlar presentaciones
-- **Ventana de Presentación** (presentation.html): Ventana secundaria que muestra el contenido multimedia
-- **Vista de Marco** (frame.html): Posiblemente utilizada para mostrar contenido enmarcado
+- **`src/`**: la aplicación (raíz web)
+  - **Panel de Control** (`src/index.html`): interfaz principal para gestionar medios y controlar presentaciones
+  - **Ventana de Presentación** (`src/presentation.html`): ventana secundaria que muestra el contenido multimedia
+- **`sandbox/`**: experimentos y POCs no conectados a la aplicación
+- **`test/`**: pruebas de humo (Playwright)
+
+## Cómo Ejecutar
+
+Ver [CONTRIBUTING.md](CONTRIBUTING.md). En corto: `nvm use && npm install`, luego servir `src/` con cualquier servidor estático y abrir en un navegador Chromium.
 
 ## Público Objetivo
 
@@ -39,4 +44,4 @@ Esta aplicación está diseñada específicamente para ser utilizada por miembro
 
 ## Estado del Proyecto
 
-El proyecto se encuentra en desarrollo activo, con una estructura bien definida y funcionalidades clave ya implementadas, siguiendo las mejores prácticas de desarrollo web moderno. 
+Prototipo en desarrollo activo. El camino principal (arrancar el panel, gestionar la lista de medios, abrir la ventana de presentación) funciona y está cubierto por pruebas de humo; la sincronización completa de medios entre ventanas está en progreso. 
