@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * SharedWorker acting as multiple BehaviorSubjects.
  * For each distinct message code, the latest message is stored and immediately sent
@@ -8,10 +9,25 @@
  * - If an error occurs during message delivery, that port is removed.
  * - The sender port does not receive its own message back.
  */
-const latestMessages = {}; // Stores the latest message for each unique code
-const ports = []; // Active ports (clients)
 
-// Remove a disconnected or errored port from the list
+// This file is checked against lib.webworker (see tsconfig.worker.json);
+// `self` there is the generic worker scope, so narrow it to the shared one.
+const sharedWorkerSelf = /** @type {SharedWorkerGlobalScope} */ (/** @type {unknown} */ (self));
+
+/**
+ * A message routed through the worker. `code` identifies the channel.
+ * @typedef {{ code?: string, type?: string }} BusMessage
+ */
+
+/** @type {Record<string, BusMessage>} Stores the latest message for each unique code */
+const latestMessages = {};
+/** @type {MessagePort[]} Active ports (clients) */
+const ports = [];
+
+/**
+ * Remove a disconnected or errored port from the list.
+ * @param {MessagePort} port
+ */
 function removePort(port) {
     const index = ports.indexOf(port);
     if (index !== -1) {
@@ -19,6 +35,10 @@ function removePort(port) {
     }
 }
 
+/**
+ * @param {BusMessage} message
+ * @param {MessagePort} senderPort
+ */
 function broadcastMessage(message, senderPort) {
     for (let i = ports.length - 1; i >= 0; i--) {
         if (ports[i] === senderPort) continue; // Skip the sender port
@@ -33,7 +53,7 @@ function broadcastMessage(message, senderPort) {
 
 // Module workers don't expose top-level function declarations as global
 // event handlers, so the handler must be assigned to `self` explicitly.
-self.onconnect = function onconnect(event) {
+sharedWorkerSelf.onconnect = /** @param {MessageEvent} event */ function onconnect(event) {
     const port = event.ports[0];
     ports.push(port);
 
@@ -47,8 +67,8 @@ self.onconnect = function onconnect(event) {
         }
     }
 
-    port.onmessage = (event) => {
-        const message = event.data;
+    port.onmessage = (/** @type {MessageEvent} */ event) => {
+        const message = /** @type {BusMessage} */ (event.data);
 
         if (message && message.type === 'disconnect') {
             removePort(port);
@@ -65,7 +85,7 @@ self.onconnect = function onconnect(event) {
     };
 
     // Listen for message errors on this port
-    port.onmessageerror = (error) => {
+    port.onmessageerror = (/** @type {MessageEvent} */ error) => {
         console.error("Message error on port", error);
         removePort(port);
     };

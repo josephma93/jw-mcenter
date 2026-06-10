@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictBindCallApply": true,
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "types": ["jquery", "jqueryui", "node"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/js/**/*",
+    "types/**/*",
+    "tools/**/*",
+    "test/**/*",
+    "playwright.config.mjs"
+  ],
+  "exclude": [
+    "src/js/shared-worker.mjs"
+  ]
+}

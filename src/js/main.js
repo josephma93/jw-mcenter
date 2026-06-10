@@ -1,3 +1,4 @@
+// @ts-check
 import fileManager from './file-manager.js';
 import screenManager from './screens-manager.js';
 import presentationManager from './presentation-manager.js';

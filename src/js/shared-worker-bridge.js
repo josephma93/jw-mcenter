@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module sharedWorkerRxBridge
  *
@@ -74,7 +75,7 @@ export function initSharedWorkerRxBridge() {
     worker.port.start();
 
     const incomingMessages$ = fromEvent(worker.port, 'message').pipe(
-        map(event => event.data)
+        map(event => /** @type {MessageEvent} */ (event).data)
     );
 
     /**
@@ -83,6 +84,7 @@ export function initSharedWorkerRxBridge() {
      * @returns {Channel} An object with a `send` Subject and an `on` Observable filtered by the code.
      */
     function createChannel(code) {
+        /** @type {import('rxjs').Subject<Record<string, unknown>>} */
         const send = new Subject();
         send.subscribe((payload) => {
             worker.port.postMessage({ code, ...payload });

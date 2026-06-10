@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Copies third-party browser files from node_modules into src/vendor/.
  * The vendor folder is committed: the app must work offline with no CDN.

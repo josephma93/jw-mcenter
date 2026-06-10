@@ -21,6 +21,17 @@ The rules that make this work:
 5. **Classic-script exceptions:** jQuery, jQuery UI, and EJS load as plain
    `<script>` tags providing globals (`$`, `ejs`). They are the documented
    legacy exception; everything else is ESM.
+6. **Type-checked JavaScript — hard requirement.** Every `.js`/`.mjs` file
+   starts with `// @ts-check` and carries JSDoc annotations (typedefs for
+   shared shapes, `@param`/`@returns` on functions, `@type` on module-level
+   state). `npm run check` runs `tsc --noEmit` over everything and must pass
+   with zero errors; it runs automatically before `npm test`. This is a
+   *checker*, never a compiler — the browser still runs exactly what you
+   wrote. Ambient types for the vendored globals and for Chromium-only APIs
+   missing from TypeScript's lib.dom live in `types/globals.d.ts`; the
+   SharedWorker file is checked against the worker lib via
+   `tsconfig.worker.json`. Known gap: the inline module script in
+   `presentation.html` can't be checked by tsc.
 
 ## Setup
 
@@ -62,7 +73,8 @@ The app is Chromium-only by design (see SRS §2.4).
 |---|---|
 | `npm start` | Serve the app at `https://jw-mcenter.localhost` via portless |
 | `npm run dev` | Raw static server over `src/`, no proxy |
-| `npm test` | Playwright smoke tests: both pages boot with zero console errors, playlist add works |
+| `npm run check` | Type-checks all JS via `tsc --noEmit` (`@ts-check` + JSDoc) — must pass with zero errors |
+| `npm test` | Runs `npm run check` first, then Playwright smoke tests: both pages boot with zero console errors, playlist add works |
 | `npm run vendor` | Regenerates `src/vendor/` from `node_modules` — run only when upgrading a dependency, commit the result |
 
 About `npm run vendor`: it copies browser-ready dist files, except rxjs, which

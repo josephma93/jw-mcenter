@@ -1,3 +1,4 @@
+// @ts-check
 import {
     BehaviorSubject,
     Subject,
@@ -11,26 +12,56 @@ import {
     tap,
 } from 'rxjs';
 
+/**
+ * Media kind detected for a file. Doubles as the EJS template flag name.
+ * @typedef {'isImage' | 'isVideo' | 'isAudio'} DetectedMediaType
+ */
+
+/**
+ * A playlist entry. Playlist order is the array order in {@link filesState$}.
+ * @typedef {Object} FileItem
+ * @property {number} id
+ * @property {File} file
+ * @property {string} blobURL
+ * @property {DetectedMediaType} detected
+ */
+
+/**
+ * A candidate file before it is accepted into the playlist.
+ * @typedef {Object} FileDescriptor
+ * @property {File} file
+ * @property {DetectedMediaType | ''} detected Empty string when unsupported.
+ */
+
 const IS_IMAGE = 'isImage';
 const IS_VIDEO = 'isVideo';
 const IS_AUDIO = 'isAudio';
 
-let $dropContainer,
-    $fileList,
-    $emptyState,
-    $fileInput,
-    $selectFilesBtn,
-    $clearListBtn,
-    $errorDialog,
-    $errorList, fileItemHTML;
+/** @type {JQuery<HTMLElement>} */ let $dropContainer;
+/** @type {JQuery<HTMLElement>} */ let $fileList;
+/** @type {JQuery<HTMLElement>} */ let $emptyState;
+/** @type {JQuery<HTMLElement>} */ let $fileInput;
+/** @type {JQuery<HTMLElement>} */ let $selectFilesBtn;
+/** @type {JQuery<HTMLElement>} */ let $clearListBtn;
+/** @type {JQuery<HTMLElement>} */ let $errorDialog;
+/** @type {JQuery<HTMLElement>} */ let $errorList;
+/** @type {string} */ let fileItemHTML;
 
-const filesState$ = new BehaviorSubject([]);
+/** @type {BehaviorSubject<FileItem[]>} */
+const filesState$ = new BehaviorSubject(/** @type {FileItem[]} */ ([]));
+/** @type {Subject<ArrayLike<File>>} */
 const intentToAddFiles$ = new Subject();
+/** @type {Subject<number>} */
 const intentToRemoveFile$ = new Subject();
+/** @type {Subject<number>} */
 const intentToDuplicateFile$ = new Subject();
+/** @type {Subject<void>} */
 const intentToClearFiles$ = new Subject();
+/** @type {Subject<number>} */
 const intentToMoveFileUp$ = new Subject();
+/** @type {Subject<number>} */
 const intentToMoveFileDown$ = new Subject();
+/** @type {Subject<FileDescriptor[]>} */
 const unsupportedFiles$ = new Subject();
 
 function initializeDOMThings() {
@@ -58,19 +89,19 @@ function initializeDOMThings() {
             const newOrder = $fileList.children()
                 .map((_, el) => $(el).attr("data-index"))
                 .get()
-                .map(index => parseInt(index, 10));
+                .map(index => parseInt(String(index), 10));
             const currentOrder = filesState$.getValue()
                 .map((_, i) => i);
             if (!orderEquals(newOrder, currentOrder)) {
                 const newItems = $fileList.children()
-                    .map((_, el) => $(el).data("fileItem"))
+                    .map((_, el) => /** @type {FileItem} */ ($(el).data("fileItem")))
                     .get();
                 filesState$.next(newItems);
             }
         },
     });
 
-    const dropContainerEl = $dropContainer.get(0);
+    const dropContainerEl = /** @type {HTMLElement} */ ($dropContainer.get(0));
     fromEvent(dropContainerEl, "dragover").pipe(
         tap(e => {
             e.preventDefault();
@@ -93,22 +124,25 @@ function initializeDOMThings() {
             e.stopPropagation();
             $dropContainer.removeClass("dragover");
         }),
-        map(e => e.dataTransfer.files)
+        map(e => {
+            const dragEvent = /** @type {DragEvent} */ (e);
+            return dragEvent.dataTransfer ? dragEvent.dataTransfer.files : /** @type {File[]} */ ([]);
+        })
     ).subscribe(files => {
         intentToAddFiles$.next(files);
     });
 
-    fromEvent($fileInput.get(0), "change").pipe(
-        map(e => e.target.files)
+    fromEvent(/** @type {HTMLElement} */ ($fileInput.get(0)), "change").pipe(
+        map(e => /** @type {FileList} */ (/** @type {HTMLInputElement} */ (e.target).files))
     ).subscribe(files => {
         intentToAddFiles$.next(files);
         $fileInput.val("");
     });
 
-    fromEvent($selectFilesBtn.get(0), "click")
+    fromEvent(/** @type {HTMLElement} */ ($selectFilesBtn.get(0)), "click")
         .subscribe(() => $fileInput.click());
 
-    fromEvent($clearListBtn.get(0), "click")
+    fromEvent(/** @type {HTMLElement} */ ($clearListBtn.get(0)), "click")
         .subscribe(() => {
             $("<div>¿Estás seguro que deseas vaciar la lista?</div>")
                 .dialog({
@@ -130,25 +164,30 @@ function initializeDOMThings() {
         .subscribe(handleFileListStateChange);
 
     $fileList.on("click", ".delete-btn", function () {
-            const index = parseInt($(this).closest(".file-item").attr("data-index"), 10);
+            const index = parseInt(String($(this).closest(".file-item").attr("data-index")), 10);
             intentToRemoveFile$.next(index);
         })
         .on("click", ".duplicate-btn", function () {
-            const index = parseInt($(this).closest(".file-item").attr("data-index"), 10);
+            const index = parseInt(String($(this).closest(".file-item").attr("data-index")), 10);
             intentToDuplicateFile$.next(index);
         })
         .on("click", ".move-up", function (e) {
             e.stopPropagation();
-            const index = parseInt($(this).closest(".file-item").attr("data-index"), 10);
+            const index = parseInt(String($(this).closest(".file-item").attr("data-index")), 10);
             intentToMoveFileUp$.next(index);
         })
         .on("click", ".move-down", function (e) {
             e.stopPropagation();
-            const index = parseInt($(this).closest(".file-item").attr("data-index"), 10);
+            const index = parseInt(String($(this).closest(".file-item").attr("data-index")), 10);
             intentToMoveFileDown$.next(index);
         });
 }
 
+/**
+ * @param {number[]} arr1
+ * @param {number[]} arr2
+ * @returns {boolean}
+ */
 function orderEquals(arr1, arr2) {
     if (arr1.length !== arr2.length) return false;
     for (let i = 0; i < arr1.length; i++) {
@@ -157,6 +196,12 @@ function orderEquals(arr1, arr2) {
     return true;
 }
 
+/**
+ * @param {File} file
+ * @param {DetectedMediaType} detected
+ * @param {string} [providedBlobURL] Reuse an existing blob URL (duplicates).
+ * @returns {FileItem}
+ */
 function createFileItem(file, detected, providedBlobURL) {
     return {
         id: Math.floor(Math.random() * 100000),
@@ -166,6 +211,10 @@ function createFileItem(file, detected, providedBlobURL) {
     };
 }
 
+/**
+ * @param {File} file
+ * @returns {DetectedMediaType | ''} Empty string when the browser can't play it.
+ */
 function testFileSupportAndDetectType(file) {
     const type = file.type;
     if (type.startsWith("image/")) return IS_IMAGE;
@@ -180,6 +229,10 @@ function testFileSupportAndDetectType(file) {
     return '';
 }
 
+/**
+ * Re-renders the playlist DOM from state.
+ * @param {FileItem[]} newState
+ */
 function handleFileListStateChange(newState) {
     const frag = document.createDocumentFragment();
     newState.forEach((item, index) => {
@@ -198,7 +251,7 @@ function handleFileListStateChange(newState) {
         const $elem = $(compiledHTML);
         $elem.data('fileItem', item);
         $elem.attr('data-index', index);
-        frag.appendChild($elem.get(0));
+        frag.appendChild(/** @type {HTMLElement} */ ($elem.get(0)));
     });
     $fileList.empty().append(frag);
     $fileList.sortable("refresh");
@@ -216,7 +269,7 @@ const [validFiles$, invalidFiles$] = partition(
 
 validFiles$
     .pipe(
-        map(descriptor => createFileItem(descriptor.file, descriptor.detected)),
+        map(descriptor => createFileItem(descriptor.file, /** @type {DetectedMediaType} */ (descriptor.detected))),
         buffer(intentToAddFiles$),
         filter(fileItemsBatch => fileItemsBatch.length > 0)
     )
@@ -279,6 +332,11 @@ intentToClearFiles$.subscribe(() => {
     filesState$.next([]);
 });
 
+/**
+ * Moves a playlist item, wrapping around at the ends.
+ * @param {number} index
+ * @param {number} delta
+ */
 function moveFile(index, delta) {
     const currentItems = filesState$.getValue();
     const n = currentItems.length;
@@ -296,7 +354,9 @@ export default {
     filesState$,
     unsupportedFiles$,
     initialize: initializeDOMThings,
+    /** @param {ArrayLike<File>} files */
     addFiles: (files) => intentToAddFiles$.next(files),
+    /** @param {number} index */
     removeFile: (index) => intentToRemoveFile$.next(index),
     clearFiles: () => intentToClearFiles$.next(),
 };

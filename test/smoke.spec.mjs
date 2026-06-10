@@ -1,4 +1,6 @@
-const { test, expect } = require('@playwright/test');
+// @ts-check
+import { test, expect } from '@playwright/test';
+import { Buffer } from 'node:buffer';
 
 // The whole app is one ES module graph: a single bad import anywhere keeps
 // every feature from initializing. These tests assert the graph loads and the
@@ -8,7 +10,13 @@ const { test, expect } = require('@playwright/test');
 // browser doesn't grant; that rejection is expected and not a boot failure.
 const EXPECTED_NOISE = /window.?management|window.?placement|getScreenDetails|permission/i;
 
+/**
+ * Collects page errors and console errors for later assertion.
+ * @param {import('@playwright/test').Page} page
+ * @returns {string[]} Live array that fills up as the page runs.
+ */
 function collectProblems(page) {
+    /** @type {string[]} */
     const problems = [];
     page.on('pageerror', err => problems.push(`pageerror: ${err.message}`));
     page.on('console', msg => {

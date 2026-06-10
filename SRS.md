@@ -106,7 +106,7 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
   - Métodos privados y campos de clase
   - Otras características modernas disponibles en ES2024
 - **REQ-SW-05**: No debe incluir polyfills o código para compatibilidad con navegadores antiguos o no basados en Chromium.
-- **REQ-SW-06**: El código de la aplicación debe ser JavaScript puro ejecutado directamente por el navegador, sin compilación ni transpilación. La detección temprana de errores se apoya en el chequeo del editor (`// @ts-check` con JSDoc, opcional) y en las pruebas de humo automatizadas.
+- **REQ-SW-06**: El código de la aplicación debe ser JavaScript puro ejecutado directamente por el navegador, sin compilación ni transpilación. Todos los archivos JavaScript deben incluir `// @ts-check` y anotaciones JSDoc (requisito obligatorio), verificados con `tsc --noEmit` — un chequeo, nunca una compilación.
 - **REQ-SW-07**: No debe existir paso de build. Las dependencias de terceros se declaran en `package.json`, se vendorizan localmente en `src/vendor/` (comprometidas en git) y se resuelven mediante import maps nativos del navegador. El ciclo de desarrollo es: editar archivo → recargar navegador.
 - **REQ-SW-08**: La aplicación debe poder servirse con cualquier servidor de archivos estáticos; en desarrollo se sirve sobre HTTPS mediante portless para garantizar un contexto seguro (`getScreenDetails()`, SharedWorker).
 
@@ -204,7 +204,7 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 - **REQ-ED-02**: La versión de Node (usada solo para gestión de dependencias y pruebas) debe estar fijada en `.nvmrc`.
 - **REQ-ED-03**: Las dependencias de terceros deben vendorizarse con `npm run vendor` y comprometerse en git; la aplicación no debe depender de CDNs.
 - **REQ-ED-04**: El entorno de desarrollo debe proporcionar HTTPS local mediante portless, con URL estable `https://jw-mcenter.localhost`.
-- **REQ-ED-05**: Puede usarse `// @ts-check` con anotaciones JSDoc para detección de errores en el editor, sin introducir compilación.
+- **REQ-ED-05**: Todos los archivos JavaScript deben comenzar con `// @ts-check` y llevar anotaciones JSDoc. `npm run check` (`tsc --noEmit`) debe pasar sin errores y se ejecuta automáticamente antes de las pruebas (`pretest`).
 - **REQ-ED-06**: Debe existir una prueba de humo automatizada (Playwright) que verifique que ambas ventanas arrancan sin errores de consola.
 
 ##### 3.3.7 Diseño Responsive y CSS
@@ -298,4 +298,5 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 | 1.2 | [Fecha actual] | Incorporación de requisitos CSS modernos y diseño responsive | Claude 3.7 |
 | 1.3 | [Fecha actual] | Inclusión de requisitos de Workbox para Service Worker y caché offline | Claude 3.7 |
 | 1.4 | 2026-06-10 | Decisión arquitectónica: sin paso de build. Se eliminan TypeScript, Vite y Workbox; se adoptan ESM nativo, import maps, vendorización con npm y pruebas de humo | joseph montero |
-| 1.5 | 2026-06-10 | Caddy Server reemplazado por portless para HTTPS de desarrollo con URL estable | joseph montero | 
+| 1.5 | 2026-06-10 | Caddy Server reemplazado por portless para HTTPS de desarrollo con URL estable | joseph montero |
+| 1.6 | 2026-06-10 | `// @ts-check` y anotaciones JSDoc pasan a ser requisito obligatorio, verificados con `tsc --noEmit` antes de cada ejecución de pruebas | joseph montero | 

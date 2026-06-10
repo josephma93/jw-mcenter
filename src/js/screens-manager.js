@@ -1,3 +1,4 @@
+// @ts-check
 import {
     BehaviorSubject,
     distinctUntilChanged,
@@ -9,22 +10,45 @@ import {
     withLatestFrom,
 } from 'rxjs';
 
+/**
+ * A screen plus the computed geometry the canvas preview needs.
+ * @typedef {Object} RefinedScreen
+ * @property {number} index
+ * @property {boolean} isPrimary
+ * @property {boolean} isBrowserScreen Whether the control panel lives on it.
+ * @property {number} availWidth
+ * @property {number} availHeight
+ * @property {number} availLeft
+ * @property {number} availTop
+ * @property {number} offsetX Position relative to the bounding box of all screens.
+ * @property {number} offsetY
+ * @property {number} totalWidth Bounding box of all screens combined.
+ * @property {number} totalHeight
+ * @property {number} browserLeft
+ * @property {number} browserTop
+ * @property {number} browserW
+ * @property {number} browserH
+ */
+
 // Global BehaviorSubject for the selected monitor
-const selectedMonitorSubject = new BehaviorSubject(null);
+/** @type {BehaviorSubject<RefinedScreen | null>} */
+const selectedMonitorSubject = new BehaviorSubject(/** @type {RefinedScreen | null} */ (null));
 
-let canvas,
-    canvasContext,
-    $legendTableBody,
-    $monitorSelect,
-    canvasContainer,
-    legendTmpl;
+/** @type {HTMLCanvasElement} */ let canvas;
+/** @type {CanvasRenderingContext2D} */ let canvasContext;
+/** @type {JQuery<HTMLElement>} */ let $legendTableBody;
+/** @type {JQuery<HTMLElement>} */ let $monitorSelect;
+/** @type {HTMLElement} */ let canvasContainer;
+/** @type {string} */ let legendTmpl;
 
+/** @type {Promise<ScreenDetails> | null} */
 let screenDetailsPromise = null;
 
 // getScreenDetails() returns a live object that tracks screen changes, so it
 // only needs to be requested once. Chrome shows the permission prompt only
 // during a user gesture; on failure the cache is cleared so a later gesture
 // can retry.
+/** @returns {Promise<ScreenDetails>} */
 function acquireScreenDetails() {
     if (!('getScreenDetails' in window)) {
         return Promise.reject(new Error('Window Management API not supported in this browser.'));
@@ -36,17 +60,22 @@ function acquireScreenDetails() {
     return screenDetailsPromise;
 }
 
+/** @returns {Promise<PermissionState>} */
 async function queryPermissionState() {
     // 'window-management' is the current permission name; 'window-placement'
     // is the deprecated alias older Chromium versions expect.
     for (const name of ['window-management', 'window-placement']) {
         try {
-            return (await navigator.permissions.query({ name })).state;
+            return (await navigator.permissions.query({ name: /** @type {PermissionName} */ (name) })).state;
         } catch { /* this browser doesn't know this name, try the next */ }
     }
     return 'prompt';
 }
 
+/**
+ * @param {ScreenDetailed[]} screens
+ * @returns {RefinedScreen[]}
+ */
 function processScreenData(screens) {
     if (!screens || screens.length === 0) {
         throw new Error('No screens found.');
@@ -99,6 +128,7 @@ function processScreenData(screens) {
     });
 }
 
+/** @param {RefinedScreen[]} refinedScreens */
 function renderScreenPreview(refinedScreens) {
     const rect = canvasContainer.getBoundingClientRect();
     canvas.width = rect.width;
@@ -150,6 +180,7 @@ function renderScreenPreview(refinedScreens) {
     });
 }
 
+/** @param {RefinedScreen[]} refinedScreens */
 function renderPreviewLegend(refinedScreens) {
     var legendHTML = ejs.render(legendTmpl, {
         screens: refinedScreens,
@@ -157,6 +188,7 @@ function renderPreviewLegend(refinedScreens) {
     $legendTableBody.empty().html(legendHTML);
 }
 
+/** @param {RefinedScreen[]} refinedScreens */
 function renderAvailableMonitorsSelect(refinedScreens) {
     const currentSelected = $monitorSelect.val();
     $monitorSelect.find('option').not(':first').remove();
@@ -202,7 +234,7 @@ function startScreensStream() {
 
     fromEvent($monitorSelect[0], 'change')
         .pipe(
-            map(() => parseInt($monitorSelect.val(), 10)),
+            map(() => parseInt(String($monitorSelect.val()), 10)),
             withLatestFrom(availableScreensData$),
             map(([selectedIndex, refined]) => {
                 return refined.find(screen => screen.index === selectedIndex) || null;
@@ -214,13 +246,13 @@ function startScreensStream() {
 }
 
 async function initializeDOMThings() {
-    canvas = document.getElementById('layoutCanvas');
-    canvasContext = canvas.getContext('2d');
+    canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('layoutCanvas'));
+    canvasContext = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
     $legendTableBody = $('#legendTableBody');
     $monitorSelect = $('#monitorSelect');
 
-    canvasContainer = document.getElementById('canvas-container');
-    legendTmpl = document.getElementById("legendTemplate").innerHTML.trim();
+    canvasContainer = /** @type {HTMLElement} */ (document.getElementById('canvas-container'));
+    legendTmpl = /** @type {HTMLElement} */ (document.getElementById("legendTemplate")).innerHTML.trim();
 
     if (await queryPermissionState() === 'granted') {
         try {
@@ -269,7 +301,7 @@ function showPermissionRetryButton() {
             $permissionBtn.hide();
             startScreensStream();
         } catch (err) {
-            alert('Sin acceso a los monitores: ' + err.message
+            alert('Sin acceso a los monitores: ' + /** @type {Error} */ (err).message
                 + '\nSi el permiso fue bloqueado, habilítalo en la configuración del sitio (ícono junto a la URL).');
         }
     });

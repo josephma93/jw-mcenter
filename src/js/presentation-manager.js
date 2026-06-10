@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Opens and supervises the presentation (slave) window.
  *
@@ -11,8 +12,9 @@ import { interval, filter } from 'rxjs';
 
 const PING_INTERVAL_MS = 2000;
 
-let channels = null;
+/** @type {Window | null} */
 let presentationWindow = null;
+/** @type {import('./screens-manager.js').RefinedScreen | null} */
 let selectedMonitor = null;
 
 function openPresentationWindow() {
@@ -28,15 +30,19 @@ function openPresentationWindow() {
     }
 }
 
+/**
+ * @param {import('./file-manager.js')['default']} fileManager
+ * @param {import('./screens-manager.js')['default']} screenManager
+ */
 function initialize(fileManager, screenManager) {
-    channels = initSharedWorkerRxBridge();
+    const channels = initSharedWorkerRxBridge();
 
     screenManager.selectedMonitor$.subscribe(monitor => {
         selectedMonitor = monitor;
     });
 
     interval(PING_INTERVAL_MS)
-        .pipe(filter(() => presentationWindow && !presentationWindow.closed))
+        .pipe(filter(() => presentationWindow !== null && !presentationWindow.closed))
         .subscribe(() => {
             channels.pingChannel.send.next({ timestamp: Date.now() });
         });
