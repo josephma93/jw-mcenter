@@ -22,6 +22,9 @@ test('control panel boots with no errors', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#startPresentationBtn')).toBeVisible();
     await expect(page.locator('#emptyState')).toBeVisible();
+    // Without the window-management permission the app must not error — it
+    // offers a button to request access via a user gesture instead.
+    await expect(page.locator('#screensPermissionBtn')).toBeVisible();
     await page.waitForTimeout(1000); // let async module init surface errors
     expect(problems.filter(p => !EXPECTED_NOISE.test(p))).toEqual([]);
 });

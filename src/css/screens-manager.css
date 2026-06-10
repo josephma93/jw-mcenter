@@ -1,3 +1,11 @@
+/* Hidden by default; screens-manager shows it when the window-management
+   permission hasn't been granted yet. */
+.screens-permission-btn {
+    display: none;
+    margin: 0 auto 8px;
+    padding: 6px 12px;
+}
+
 #canvas-container {
     border: 2px solid #000;
     background: #ddd;

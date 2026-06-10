@@ -19,15 +19,32 @@ let canvas,
     canvasContainer,
     legendTmpl;
 
-async function requestMultiScreenAccess() {
+let screenDetailsPromise = null;
+
+// getScreenDetails() returns a live object that tracks screen changes, so it
+// only needs to be requested once. Chrome shows the permission prompt only
+// during a user gesture; on failure the cache is cleared so a later gesture
+// can retry.
+function acquireScreenDetails() {
     if (!('getScreenDetails' in window)) {
-        throw new Error('Window Placement API not supported in this browser.');
+        return Promise.reject(new Error('Window Management API not supported in this browser.'));
     }
-    try {
-        return await window.getScreenDetails();
-    } catch (err) {
-        throw new Error('Permission required for Window Placement API.');
+    screenDetailsPromise ??= window.getScreenDetails().catch(err => {
+        screenDetailsPromise = null;
+        throw err;
+    });
+    return screenDetailsPromise;
+}
+
+async function queryPermissionState() {
+    // 'window-management' is the current permission name; 'window-placement'
+    // is the deprecated alias older Chromium versions expect.
+    for (const name of ['window-management', 'window-placement']) {
+        try {
+            return (await navigator.permissions.query({ name })).state;
+        } catch { /* this browser doesn't know this name, try the next */ }
     }
+    return 'prompt';
 }
 
 function processScreenData(screens) {
@@ -161,21 +178,15 @@ function renderAvailableMonitorsSelect(refinedScreens) {
 const REFRESH_INTERVAL_MS = 200; // ~5fps
 const availableScreensData$ = interval(REFRESH_INTERVAL_MS)
     .pipe(
-        switchMap(() => requestMultiScreenAccess()),
+        switchMap(() => acquireScreenDetails()),
         map(sd => processScreenData(sd.screens)),
         distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
         shareReplay(1),
     );
 
-function initializeDOMThings() {
-    canvas = document.getElementById('layoutCanvas');
-    canvasContext = canvas.getContext('2d');
-    $legendTableBody = $('#legendTableBody');
-    $monitorSelect = $('#monitorSelect');
-
-    canvasContainer = document.getElementById('canvas-container');
-    legendTmpl = document.getElementById("legendTemplate").innerHTML.trim();
-
+// Subscribing starts the polling, which requires the permission to already be
+// granted — only call this after acquireScreenDetails() has succeeded.
+function startScreensStream() {
     availableScreensData$
         .subscribe(refined => {
             renderScreenPreview(refined);
@@ -200,6 +211,37 @@ function initializeDOMThings() {
         .subscribe(selectedMonitor => {
             selectedMonitorSubject.next(selectedMonitor);
         });
+}
+
+async function initializeDOMThings() {
+    canvas = document.getElementById('layoutCanvas');
+    canvasContext = canvas.getContext('2d');
+    $legendTableBody = $('#legendTableBody');
+    $monitorSelect = $('#monitorSelect');
+
+    canvasContainer = document.getElementById('canvas-container');
+    legendTmpl = document.getElementById("legendTemplate").innerHTML.trim();
+
+    if (await queryPermissionState() === 'granted') {
+        try {
+            await acquireScreenDetails();
+            startScreensStream();
+            return;
+        } catch { /* fall through to the button */ }
+    }
+
+    // Not granted yet: the prompt needs a user gesture, so ask via a click.
+    const $permissionBtn = $('#screensPermissionBtn');
+    $permissionBtn.show().on('click', async () => {
+        try {
+            await acquireScreenDetails();
+            $permissionBtn.hide();
+            startScreensStream();
+        } catch (err) {
+            alert('Sin acceso a los monitores: ' + err.message
+                + '\nSi el permiso fue bloqueado, habilítalo en la configuración del sitio (ícono junto a la URL).');
+        }
+    });
 }
 
 export default {
