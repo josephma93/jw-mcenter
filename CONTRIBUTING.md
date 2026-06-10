@@ -74,6 +74,7 @@ The app is Chromium-only by design (see SRS §2.4).
 | `npm start` | Serve the app at `https://jw-mcenter.localhost` via portless |
 | `npm run dev` | Raw static server over `src/`, no proxy |
 | `npm run check` | Type-checks all JS via `tsc --noEmit` (`@ts-check` + JSDoc) — must pass with zero errors |
+| `npm run check:watch` | Same check, continuously on every save — IDE-free live feedback in a terminal (app config; the worker file is covered by `npm run check`) |
 | `npm test` | Runs `npm run check` first, then Playwright smoke tests: both pages boot with zero console errors, playlist add works |
 | `npm run vendor` | Regenerates `src/vendor/` from `node_modules` — run only when upgrading a dependency, commit the result |
 

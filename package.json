@@ -8,6 +8,7 @@
     "start": "portless",
     "vendor": "node tools/vendor.mjs",
     "check": "tsc -p tsconfig.json && tsc -p tsconfig.worker.json",
+    "check:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "pretest": "npm run check",
     "test": "playwright test"
   },
