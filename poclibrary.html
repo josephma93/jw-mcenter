@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblioteca de Medios Local (jQuery+EJS)</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.14.1/themes/base/jquery-ui.min.css"
+        integrity="sha512-TFee0335YRJoyiqz8hA8KV3P0tXa5CpRBSoM0Wnkn7JoJx1kaq1yXL/rb8YFpWXkMOjRcv5txv+C6UluttluCQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.14.1/jquery-ui.min.js"
+        integrity="sha512-MSOo1aY+3pXCOCdGAYoBZ6YGI0aragoQsg1mKKBHXCYPIWxamwOE7Drh+N5CPgGI5SA9IEKJiPjdfqWFWmZtRA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/ejs@3.1.10/ejs.min.js"
+        integrity="sha256-FMg8nWT7/jWowLdDOFNNxtO8AcZM0Hri4lVe7Wl4DtM=" crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+
+    <style>
+        /* CSS Básico (Ajustado ligeramente para jQuery UI) */
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 95vh;
+            font-size: 14px;
+            /* Ajuste base para UI */
+        }
+
+        h1,
+        h2 {
+            color: #444;
+            /* Ligeramente más oscuro */
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        h3 {
+            margin-top: 1em;
+            margin-bottom: 0.3em;
+            font-size: 1.1em;
+            color: #555;
+        }
+
+        /* jQuery UI anulará estilos de botón base, pero podemos añadir márgenes etc. */
+        .controls button,
+        .container button {
+            margin: 5px;
+        }
+
+        #status,
+        #error-message {
+            margin-top: 15px;
+            font-style: italic;
+            color: #666;
+            min-height: 1.2em;
+            /* Evitar saltos de layout */
+        }
+
+        #error-message {
+            color: #d9534f;
+            /* Rojo error */
+            font-weight: bold;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .library-section,
+        .playlist-section {
+            flex: 1;
+            min-width: 300px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid #ddd;
+            /* Borde sutil */
+            overflow-y: auto;
+            max-height: 60vh;
+        }
+
+        #selected-folders-list,
+        #media-library-list,
+        #playlist {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+
+        /* Estilos para items generados por EJS */
+        #selected-folders-list li,
+        #media-library-list li {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #fff;
+            /* Fondo explícito */
+            border: 1px solid #eee;
+            /* Borde ligero */
+            margin-bottom: 3px;
+            border-radius: 4px;
+        }
+
+        #selected-folders-list li:last-child,
+        #media-library-list li:last-child {
+            /* border-bottom: none; */
+            /* Quitado por borde individual */
+        }
+
+        .file-name {
+            flex-grow: 1;
+            margin-right: 10px;
+            margin-left: 5px;
+            /* Espacio después del prefijo */
+            word-break: break-all;
+        }
+
+        .file-type-prefix {
+            font-weight: bold;
+            color: #777;
+            /* Más visible */
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+
+        /* Ajustes para botones dentro de listas */
+        .remove-folder-btn,
+        .add-to-playlist-btn {
+            /* jQuery UI button anulará esto, usar clases UI si es necesario o !important */
+            /* font-size: 0.9em !important; */
+            /* Ejemplo forzado */
+            padding: 2px 6px !important;
+            /* Forzar tamaño pequeño */
+            margin-left: 10px;
+        }
+
+        .remove-folder-btn {
+            /* Color rojo con jQuery UI Button */
+            /* Se puede lograr con CSS adicional o extensiones de jQuery UI */
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Selector de Biblioteca de Medios (jQuery+EJS)</h1>
+
+    <div class="controls">
+        <button id="add-folder-btn">Añadir Carpeta</button>
+        <button id="clear-folders-btn">Limpiar Carpetas</button>
+        <p id="status">Estado: Listo.</p>
+        <p id="error-message"></p>
+    </div>
+
+    <div class="container">
+        <div class="library-section">
+            <h2>Biblioteca de Medios</h2>
+            <h3>Carpetas Seleccionadas:</h3>
+            <ul id="selected-folders-list"></ul>
+            <h3>Archivos Multimedia Encontrados:</h3>
+            <ul id="media-library-list"></ul>
+        </div>
+
+        <div class="playlist-section">
+            <h2>Playlist (Ejemplo)</h2>
+            <ul id="playlist"></ul>
+        </div>
+    </div>
+
+    <script type="text/html" id="folder-item-template">
+      <li class="folder-item" data-folder-name="<%= name %>">
+        <span title="Carpeta: <%= name %>"><%- name %></span>
+        <button class="remove-folder-btn ui-button ui-widget ui-corner-all" title="Eliminar carpeta <%= name %>">X</button>
+      </li>
+    </script>
+
+    <script type="text/html" id="media-item-template">
+      <li class="media-item" data-file-path="<%= filePath %>">
+          <span class="file-type-prefix">[<%= fileType %>]</span>
+          <span class="file-name" title="<%= filePath %>"><%- filePath %></span>
+          <button class="add-to-playlist-btn ui-button ui-widget ui-corner-all" data-file-path="<%= filePath %>" data-file-type="<%= fileType %>">Añadir</button> </li>
+    </script>
+
+
+    <script>
+        // --- Configuración (sin cambios) ---
+        const DB_NAME = 'mediaLibraryDB_v2'; // Nueva versión por si acaso
+        const DB_VERSION = 1;
+        const STORE_NAME = 'directoryHandles';
+        const MEDIA_TYPES = {
+            audio: ['.mp3', '.ogg', '.wav', '.flac', '.m4a', '.aac', '.opus'],
+            video: ['.mp4', '.webm', '.ogv', '.mov', '.avi', '.mkv'],
+            image: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg']
+        };
+
+        // --- Variables Globales ---
+        let db = null;
+        let directoryHandles = [];
+        // Mapa para asociar filePath con su fileHandle (necesario con EJS)
+        const fileHandlesMap = new Map();
+
+        // --- Funciones de IndexedDB (sin cambios en la lógica interna, solo formato) ---
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                if (!window.indexedDB) {
+                    return reject(new Error('IndexedDB no es soportado.'));
+                }
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = (event) => reject(new Error(`Error IndexedDB: ${event.target.error}`));
+                request.onsuccess = (event) => { db = event.target.result; resolve(db); };
+                request.onupgradeneeded = (event) => {
+                    const dbInstance = event.target.result;
+                    if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
+                        dbInstance.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+            });
+        }
+
+        function saveHandlesToDB(handles) {
+            return new Promise(async (resolve, reject) => {
+                if (!db) try { await openDB(); } catch (err) { return reject(err); }
+                if (!db) return reject(new Error("DB no disponible para guardar."));
+
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const clearRequest = store.clear();
+                let saveCount = 0;
+                const totalToSave = handles.length;
+
+                clearRequest.onerror = (event) => console.error('Error limpiando store:', event.target.error);
+                clearRequest.onsuccess = () => {
+                    if (totalToSave === 0) {
+                        // No hacer nada más aquí, transaction.oncomplete se encargará
+                        return;
+                    }
+                    handles.forEach((handle) => {
+                        // Asegurarse que el objeto handle es clonable para IDB
+                        try {
+                            const handleObject = { handle: handle, name: handle.name };
+                            const addRequest = store.add(handleObject);
+                            addRequest.onsuccess = () => { saveCount++; };
+                            addRequest.onerror = (e) => console.error(`Error guardando handle ${handle.name}:`, e.target.error);
+                        } catch (cloneError) {
+                            console.error(`Error: Handle ${handle.name} no pudo ser clonado para IDB`, cloneError);
+                        }
+                    });
+                };
+                transaction.oncomplete = () => {
+                    if (saveCount === totalToSave || totalToSave === 0) { // Considerar 0 como éxito
+                        console.log(`${saveCount} handles guardados.`);
+                        resolve();
+                    } else {
+                        console.warn(`Se intentaron guardar ${totalToSave}, éxito ${saveCount}.`);
+                        resolve(); // Resolver incluso con fallos parciales
+                    }
+                };
+                transaction.onerror = (event) => reject(new Error(`Error transacción guardado: ${event.target.error}`));
+            });
+        }
+
+        function loadHandlesFromDB() {
+            return new Promise(async (resolve, reject) => {
+                if (!db) try { await openDB(); } catch (err) { return reject(err); }
+                if (!db) return reject(new Error("DB no disponible para cargar."));
+
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.getAll();
+                request.onerror = (event) => reject(new Error(`Error cargando handles: ${event.target.error}`));
+                request.onsuccess = (event) => {
+                    const handleObjects = event.target.result;
+                    const handles = handleObjects.map(obj => obj.handle).filter(Boolean); // Filtrar nulos
+                    resolve(handles);
+                };
+            });
+        }
+
+
+        // --- Lógica Principal con jQuery y EJS ---
+
+        // Referencias jQuery a elementos principales
+        const $statusEl = $('#status');
+        const $errorEl = $('#error-message');
+        const $selectedFoldersListEl = $('#selected-folders-list');
+        const $mediaLibraryListEl = $('#media-library-list');
+        const $playlistEl = $('#playlist');
+        const $addFolderBtn = $('#add-folder-btn');
+        const $clearFoldersBtn = $('#clear-folders-btn');
+
+        // Plantillas EJS cacheadas
+        const folderItemTemplate = $('#folder-item-template').html();
+        const mediaItemTemplate = $('#media-item-template').html();
+
+        function updateStatus(message, isError = false) {
+            $statusEl.text(`Estado: ${message}`);
+            $errorEl.text(isError ? message : '').toggle(isError); // Mostrar/ocultar error
+            console.log(message);
+            if (isError) console.error(message);
+        }
+
+        async function verifyPermissionsAndProcessFolders(handlesToProcess) {
+            updateStatus('Verificando permisos y procesando carpetas...');
+            $mediaLibraryListEl.empty();
+            $selectedFoldersListEl.empty();
+            fileHandlesMap.clear(); // Limpiar mapa de handles de archivo
+            let filesFound = 0;
+            const verifiedHandles = [];
+
+            $clearFoldersBtn.button("option", "disabled", handlesToProcess.length === 0); // Habilitar/deshabilitar botón
+
+            for (const handle of handlesToProcess) {
+                if (!handle || typeof handle.queryPermission !== 'function') {
+                    console.warn("Omitiendo handle inválido:", handle);
+                    continue;
+                }
+                try {
+                    const permissionStatus = await handle.queryPermission({ mode: 'read' });
+                    if (permissionStatus === 'granted') {
+                        verifiedHandles.push(handle);
+                        renderSelectedFolder(handle); // Usa EJS
+                        filesFound += await readDirectoryContent(handle, '');
+                    } else if (permissionStatus === 'prompt') {
+                        updateStatus(`Permiso necesario para "${handle.name}".`, true);
+                    } else {
+                        updateStatus(`Permiso denegado para "${handle.name}".`, true);
+                    }
+                } catch (err) {
+                    updateStatus(`Error procesando "${handle.name}": ${err.message}`, true);
+                }
+            }
+
+            directoryHandles = verifiedHandles; // Actualizar lista global
+            await saveHandlesToDB(directoryHandles); // Guardar solo los verificados
+
+            const foldersMsg = `${directoryHandles.length} carpeta${directoryHandles.length !== 1 ? 's' : ''}`;
+            if (directoryHandles.length > 0) {
+                updateStatus(`Procesamiento completo. ${filesFound} archivos encontrados en ${foldersMsg} verificadas.`);
+            } else if (handlesToProcess.length > 0) {
+                updateStatus('No se pudo verificar permiso para las carpetas cargadas o eran inválidas.', true);
+            } else {
+                updateStatus('Listo. Añade una carpeta.');
+            }
+            // Asegurar estado del botón limpiar tras procesar
+            $clearFoldersBtn.button("option", "disabled", directoryHandles.length === 0);
+        }
+
+        // Renderiza usando EJS
+        function renderSelectedFolder(handle) {
+            try {
+                const renderedHtml = ejs.render(folderItemTemplate, { name: handle.name });
+                const $listItem = $(renderedHtml);
+                // Aplicar .button() al botón recién añadido
+                $listItem.find('.remove-folder-btn').button({
+                    icon: "ui-icon-closethick", // Icono de jQuery UI
+                    showLabel: false, // Ocultar texto 'X'
+                    classes: { "ui-button": "ui-corner-all" } // Asegurar clases si es necesario
+                }).css({ width: '22px', height: '22px' }); // Ajustar tamaño para icono pequeño
+                $selectedFoldersListEl.append($listItem);
+            } catch (e) {
+                console.error("Error renderizando plantilla de carpeta:", e);
+                updateStatus(`Error al mostrar carpeta ${handle.name}`, true);
+            }
+        }
+
+        async function removeFolder(folderName) {
+            updateStatus(`Eliminando carpeta "${folderName}"...`);
+            directoryHandles = directoryHandles.filter(h => h.name !== folderName);
+            try {
+                await saveHandlesToDB(directoryHandles);
+                updateStatus(`Carpeta "${folderName}" eliminada. Recargando...`);
+                // No necesitamos eliminar el LI manualmente, verifyPermissions... lo hará
+                await verifyPermissionsAndProcessFolders(directoryHandles);
+            } catch (err) {
+                updateStatus(`Error al eliminar "${folderName}": ${err.message}`, true);
+                // Recargar de todos modos para reflejar estado en memoria
+                await verifyPermissionsAndProcessFolders(directoryHandles);
+            }
+        }
+
+        async function readDirectoryContent(dirHandle, currentPath) {
+            let fileCount = 0;
+            try {
+                for await (const entry of dirHandle.values()) {
+                    const entryPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+                    if (entry.kind === 'file') {
+                        const lowerCaseName = entry.name.toLowerCase();
+                        let fileType = null;
+                        if (MEDIA_TYPES.audio.some(ext => lowerCaseName.endsWith(ext))) fileType = 'Audio';
+                        else if (MEDIA_TYPES.video.some(ext => lowerCaseName.endsWith(ext))) fileType = 'Video';
+                        else if (MEDIA_TYPES.image.some(ext => lowerCaseName.endsWith(ext))) fileType = 'Imagen';
+
+                        if (fileType) {
+                            addFileToList(entry, entryPath, fileType); // Usa EJS
+                            fileCount++;
+                        }
+                    } else if (entry.kind === 'directory') {
+                        fileCount += await readDirectoryContent(entry, entryPath);
+                    }
+                }
+            } catch (err) {
+                updateStatus(`Error leyendo ${dirHandle.name}${currentPath ? '/' + currentPath : ''}: ${err.message}.`, true);
+                if (err.name === 'NotAllowedError') {
+                    try { await dirHandle.requestPermission({ mode: 'read' }); } catch (pErr) { }
+                }
+            }
+            return fileCount;
+        }
+
+        // Renderiza usando EJS y guarda handle en mapa
+        function addFileToList(fileHandle, filePath, fileType) {
+            try {
+                const renderedHtml = ejs.render(mediaItemTemplate, { filePath, fileType });
+                const $listItem = $(renderedHtml);
+
+                // Guardar el handle asociado a este item (usando filePath como clave)
+                fileHandlesMap.set(filePath, fileHandle);
+
+                // Aplicar .button() al botón
+                $listItem.find('.add-to-playlist-btn').button({
+                    icon: "ui-icon-plusthick",
+                    showLabel: true, // Mostrar "Añadir"
+                    classes: { "ui-button": "ui-corner-all" }
+                }).css({ fontSize: '0.8em', padding: '2px 5px' }); // Ajustar tamaño/padding
+
+                $mediaLibraryListEl.append($listItem);
+            } catch (e) {
+                console.error("Error renderizando plantilla de medio:", e);
+                updateStatus(`Error al mostrar archivo ${filePath}`, true);
+            }
+        }
+
+        // --- Inicialización y Eventos con jQuery ---
+        $(async () => { // Document Ready
+            updateStatus('Inicializando aplicación...');
+
+            // Inicializar botones principales con jQuery UI
+            $addFolderBtn.button({ icon: "ui-icon-folder-open" });
+            $clearFoldersBtn.button({ icon: "ui-icon-trash" }).button("option", "disabled", true); // Deshabilitado inicialmente
+
+            // Comprobaciones de soporte
+            if (!window.showDirectoryPicker) {
+                updateStatus('API File System Access no soportada.', true);
+                $addFolderBtn.button("option", "disabled", true);
+                return;
+            }
+            if (!window.indexedDB) {
+                updateStatus('IndexedDB no soportado. La selección no persistirá.', true);
+                // Podría continuar sin persistencia
+            }
+            if (typeof ejs === 'undefined') {
+                updateStatus('Librería EJS no cargada correctamente.', true);
+                $addFolderBtn.button("option", "disabled", true); // No se puede renderizar
+                return;
+            }
+
+            // Cargar datos iniciales
+            try {
+                await openDB();
+                const loadedHandles = await loadHandlesFromDB();
+                if (loadedHandles && loadedHandles.length > 0) {
+                    updateStatus(`Cargando ${loadedHandles.length} carpetas guardadas...`);
+                    await verifyPermissionsAndProcessFolders(loadedHandles);
+                } else {
+                    updateStatus('No se encontraron carpetas guardadas.');
+                }
+            } catch (err) {
+                updateStatus(`Error en inicialización: ${err.message}`, true);
+            } finally {
+                // Habilitar botón añadir si todo fue bien (o parcialmente bien)
+                if (window.showDirectoryPicker) {
+                    $addFolderBtn.button("option", "disabled", false);
+                }
+                // Estado del botón limpiar ya se ajustó en verifyPermissions...
+            }
+
+            // --- Manejadores de Eventos Delegados ---
+
+            // Click en botón "Añadir Carpeta"
+            $addFolderBtn.on('click', async () => {
+                updateStatus('Esperando selección de carpeta...');
+                $errorEl.empty().hide();
+                try {
+                    const newHandle = await window.showDirectoryPicker({ mode: 'read' });
+                    updateStatus(`Carpeta "${newHandle.name}" seleccionada. Verificando...`);
+
+                    let isDuplicate = false;
+                    for (const h of directoryHandles) {
+                        if (await h.isSameEntry(newHandle)) { isDuplicate = true; break; }
+                    }
+
+                    if (!isDuplicate) {
+                        directoryHandles.push(newHandle);
+                        await saveHandlesToDB(directoryHandles);
+                        updateStatus(`Carpeta "${newHandle.name}" añadida. Recargando...`);
+                        await verifyPermissionsAndProcessFolders(directoryHandles);
+                    } else {
+                        updateStatus(`La carpeta "${newHandle.name}" ya existe.`, false);
+                    }
+                } catch (err) {
+                    if (err.name === 'AbortError') updateStatus('Selección cancelada.');
+                    else updateStatus(`Error al seleccionar: ${err.message}`, true);
+                }
+            });
+
+            // Click en botón "Limpiar Carpetas"
+            $clearFoldersBtn.on('click', async () => {
+                // Usar diálogo de jQuery UI para confirmación
+                $('<div>¿Estás seguro de eliminar TODAS las carpetas seleccionadas?</div>').dialog({
+                    title: "Confirmar Limpieza",
+                    modal: true,
+                    buttons: {
+                        "Sí, eliminar todo": async function () {
+                            $(this).dialog("close"); // Cerrar diálogo
+                            updateStatus('Limpiando carpetas...');
+                            directoryHandles = [];
+                            fileHandlesMap.clear();
+                            try {
+                                await saveHandlesToDB(directoryHandles);
+                                $mediaLibraryListEl.empty();
+                                $selectedFoldersListEl.empty();
+                                updateStatus('Carpetas eliminadas.');
+                                $clearFoldersBtn.button("option", "disabled", true);
+                            } catch (err) {
+                                updateStatus(`Error al limpiar DB: ${err.message}`, true);
+                            }
+                        },
+                        "Cancelar": function () {
+                            $(this).dialog("close");
+                        }
+                    }
+                });
+            });
+
+            // Click en botón "X" para eliminar carpeta individual (Delegado)
+            $selectedFoldersListEl.on('click', '.remove-folder-btn', function () {
+                const folderName = $(this).closest('li').data('folderName');
+                if (folderName) {
+                    removeFolder(folderName); // Llama a la función async
+                }
+            });
+
+            // Click en botón "Añadir" para archivo multimedia (Delegado)
+            $mediaLibraryListEl.on('click', '.add-to-playlist-btn', function () {
+                const $button = $(this);
+                const filePath = $button.data('filePath');
+                const fileType = $button.data('fileType');
+                // Recuperar el handle desde el mapa
+                const fileHandle = fileHandlesMap.get(filePath);
+
+                if (filePath && fileType && fileHandle) {
+                    console.log(`Añadir ${fileType} a playlist:`, filePath, fileHandle);
+                    // Ejemplo: añadir a la lista visual de playlist
+                    const playlistItemHtml = `<li>[${fileType}] ${filePath}</li>`; // Sin EJS aquí por simplicidad
+                    $playlistEl.append(playlistItemHtml);
+                    updateStatus(`"${filePath}" añadido a playlist.`);
+                } else {
+                    console.warn("No se encontró información completa para añadir a playlist:", filePath);
+                    updateStatus("Error al obtener datos del archivo para añadir.", true);
+                }
+            });
+
+        }); // Fin Document Ready
+    </script>
+
+</body>
+
+</html>
