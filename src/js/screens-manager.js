@@ -227,12 +227,33 @@ async function initializeDOMThings() {
             await acquireScreenDetails();
             startScreensStream();
             return;
-        } catch { /* fall through to the button */ }
+        } catch { /* fall through to the first-interaction request */ }
     }
 
-    // Not granted yet: the prompt needs a user gesture, so ask via a click.
+    requestPermissionOnFirstInteraction();
+}
+
+// The permission prompt needs transient activation, so request it inside the
+// user's first interaction with the page — same idea as the old
+// multi-screen.js userActivation poll, but event-driven instead of timed.
+// If the prompt is dismissed or denied, a retry button appears.
+function requestPermissionOnFirstInteraction() {
+    const EVENTS = ['click', 'keydown'];
+    async function onFirstInteraction() {
+        EVENTS.forEach(e => document.removeEventListener(e, onFirstInteraction, true));
+        try {
+            await acquireScreenDetails();
+            startScreensStream();
+        } catch {
+            showPermissionRetryButton();
+        }
+    }
+    EVENTS.forEach(e => document.addEventListener(e, onFirstInteraction, true));
+}
+
+function showPermissionRetryButton() {
     const $permissionBtn = $('#screensPermissionBtn');
-    $permissionBtn.show().on('click', async () => {
+    $permissionBtn.show().off('click').on('click', async () => {
         try {
             await acquireScreenDetails();
             $permissionBtn.hide();
