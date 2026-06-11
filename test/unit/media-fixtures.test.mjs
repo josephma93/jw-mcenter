@@ -4,6 +4,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { mediaFixtures } from '../support/media-fixtures.mjs';
 
+/**
+ * @param {string} filePath
+ */
 function readPngSize(filePath) {
     const buffer = fs.readFileSync(filePath);
     assert.equal(buffer.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
