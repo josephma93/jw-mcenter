@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Shared bus contract and core state machine.
  * Pure module: safe to import from both browser worker code and Node tests.
@@ -60,6 +61,19 @@ export function isTransientActionCode(code) {
  * @typedef {{ postMessage(message: BusMessage): void }} BusPort
  */
 
+/**
+ * @typedef {Object} SharedBus
+ * @property {(port: BusPort) => void} addPort
+ * @property {(port: BusPort) => void} removePort
+ * @property {(port: BusPort) => void} replayToPort
+ * @property {(message: BusMessage | null | undefined, senderPort: BusPort) => void} handleMessage
+ */
+
+/**
+ * Create the pure shared bus state machine used by the SharedWorker wrapper.
+ * Stateful messages are retained for replay; transient messages are only forwarded live.
+ * @returns {SharedBus}
+ */
 export function createSharedBus() {
     /** @type {Record<string, BusMessage>} */
     const latestStatefulMessages = {};
