@@ -21,27 +21,9 @@
  */
 
 import { Subject, fromEvent, filter, map } from 'rxjs';
+import { ACTION_CODES } from './shared-worker-bus.mjs';
 
-/**
- * Action codes for communication between control panel and presenter.
- * @readonly
- * @enum {string}
- */
-export const ACTION_CODES = {
-    // Commands from control panel to presenter:
-    UPDATE_MEDIA: 'update_media',
-    PLAY: 'play',
-    PAUSE: 'pause',
-    FAST_FORWARD: 'fast_forward',
-    REWIND: 'rewind',
-
-    // Status events from presenter to control panel:
-    MEDIA_TIME_UPDATE: 'media_time_update',
-
-    // Ping-Pong mechanism for health-check:
-    PING: 'ping', // Sent by control panel to presenter
-    PONG: 'pong'  // Sent by presenter to control panel
-};
+export { ACTION_CODES } from './shared-worker-bus.mjs';
 
 /**
  * A communication channel consisting of a sender and receiver.
@@ -73,6 +55,14 @@ export function initSharedWorkerRxBridge() {
         name: 'presenterWindowController'
     });
     worker.port.start();
+
+    window.addEventListener('pagehide', () => {
+        try {
+            worker.port.postMessage({ type: 'disconnect' });
+        } finally {
+            worker.port.close();
+        }
+    }, { once: true });
 
     const incomingMessages$ = fromEvent(worker.port, 'message').pipe(
         map(event => /** @type {MessageEvent} */ (event).data)
