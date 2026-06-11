@@ -6,15 +6,17 @@ export const NO_GESTURE_AUTOPLAY_ARG = '--autoplay-policy=no-user-gesture-requir
 export const STRICT_AUTOPLAY_ARG = '--autoplay-policy=document-user-activation-required';
 
 export function buildSmokeLaunchOptions() {
-    return {
-        args: [NO_GESTURE_AUTOPLAY_ARG],
-    };
+    return undefined;
+}
+
+export function buildScreenInfoArgs() {
+    return [SCREEN_INFO_ARG];
 }
 
 export function buildMultiscreenLaunchOptions() {
     return {
         args: [
-            SCREEN_INFO_ARG,
+            ...buildScreenInfoArgs(),
             NO_GESTURE_AUTOPLAY_ARG,
         ],
     };
@@ -22,7 +24,10 @@ export function buildMultiscreenLaunchOptions() {
 
 export function buildStrictAutoplayLaunchOptions() {
     return {
-        args: [STRICT_AUTOPLAY_ARG],
+        args: [
+            ...buildScreenInfoArgs(),
+            STRICT_AUTOPLAY_ARG,
+        ],
     };
 }
 
@@ -31,9 +36,7 @@ export function createProjectDefinitions() {
         {
             name: 'smoke',
             testMatch: ['**/smoke/**/*.spec.mjs'],
-            use: {
-                launchOptions: buildSmokeLaunchOptions(),
-            },
+            use: {},
         },
         {
             name: 'multiscreen',
@@ -47,6 +50,7 @@ export function createProjectDefinitions() {
             name: 'strict-autoplay',
             testMatch: ['**/strict-autoplay/**/*.spec.mjs'],
             use: {
+                viewport: null,
                 launchOptions: buildStrictAutoplayLaunchOptions(),
             },
         },
