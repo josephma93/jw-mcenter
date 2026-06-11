@@ -56,3 +56,52 @@ test('bus replays only stateful messages to late ports', () => {
         { code: ACTION_CODES.UPDATE_MEDIA, mediaUrl: 'alpha.png' }
     ]);
 });
+
+test('replay stops after removing a port that fails during initial delivery', () => {
+    const bus = createSharedBus();
+    const sender = createPort('sender');
+
+    bus.addPort(sender);
+    bus.handleMessage({ code: ACTION_CODES.UPDATE_MEDIA, mediaUrl: 'alpha.png' }, sender);
+
+    let attempts = 0;
+    const failingPort = {
+        postMessage() {
+            attempts += 1;
+            throw new Error('port closed');
+        }
+    };
+
+    bus.addPort(failingPort);
+    bus.replayToPort(failingPort);
+    bus.handleMessage({ code: ACTION_CODES.PLAY }, sender);
+
+    assert.equal(attempts, 1);
+});
+
+test('disconnect removes old ports so later presenter cycles do not leak commands', () => {
+    const bus = createSharedBus();
+    const control = createPort('control');
+    const oldPresenter = createPort('oldPresenter');
+    const newPresenter = createPort('newPresenter');
+
+    bus.addPort(control);
+    bus.addPort(oldPresenter);
+    bus.handleMessage({ code: ACTION_CODES.UPDATE_MEDIA, mediaUrl: 'alpha.png' }, control);
+    assert.deepEqual(oldPresenter.received, [
+        { code: ACTION_CODES.UPDATE_MEDIA, mediaUrl: 'alpha.png' }
+    ]);
+
+    bus.handleMessage({ type: 'disconnect' }, oldPresenter);
+    bus.addPort(newPresenter);
+    bus.replayToPort(newPresenter);
+    bus.handleMessage({ code: ACTION_CODES.PLAY }, control);
+
+    assert.deepEqual(oldPresenter.received, [
+        { code: ACTION_CODES.UPDATE_MEDIA, mediaUrl: 'alpha.png' }
+    ]);
+    assert.deepEqual(newPresenter.received, [
+        { code: ACTION_CODES.UPDATE_MEDIA, mediaUrl: 'alpha.png' },
+        { code: ACTION_CODES.PLAY }
+    ]);
+});

@@ -94,6 +94,7 @@ export function createSharedBus() {
                 port.postMessage(message);
             } catch {
                 removePort(port);
+                break;
             }
         }
     }

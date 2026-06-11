@@ -56,6 +56,14 @@ export function initSharedWorkerRxBridge() {
     });
     worker.port.start();
 
+    window.addEventListener('pagehide', () => {
+        try {
+            worker.port.postMessage({ type: 'disconnect' });
+        } finally {
+            worker.port.close();
+        }
+    }, { once: true });
+
     const incomingMessages$ = fromEvent(worker.port, 'message').pipe(
         map(event => /** @type {MessageEvent} */ (event).data)
     );
