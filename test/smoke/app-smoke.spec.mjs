@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { Buffer } from 'node:buffer';
+import { mediaFixturePath } from '../support/media-fixtures.mjs';
 import {
     collectProblems,
     EXPECTED_PERMISSION_NOISE,
@@ -25,16 +25,9 @@ test('control panel boots with permission-denied flow isolated to smoke', async 
 test('adding a deterministic fixture renders it in the playlist', async ({ page }) => {
     const problems = collectProblems(page);
     await page.goto('/');
-    await page.locator('#fileInput').setInputFiles({
-        name: 'pixel.png',
-        mimeType: 'image/png',
-        buffer: Buffer.from(
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            'base64'
-        ),
-    });
+    await page.locator('#fileInput').setInputFiles(mediaFixturePath('smallPng'));
     await expect(page.locator('.file-item')).toHaveCount(1);
-    await expect(page.locator('.file-item .file-name')).toHaveText('pixel.png');
+    await expect(page.locator('.file-item .file-name')).toHaveText('small.png');
     expectNoProblems(problems, EXPECTED_PERMISSION_NOISE);
 });
 

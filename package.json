@@ -9,8 +9,8 @@
     "vendor": "node tools/vendor.mjs",
     "check": "tsc -p tsconfig.json && tsc -p tsconfig.worker.json",
     "check:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
-    "pretest": "npm run check",
-    "test": "playwright test"
+    "test:unit": "node --test test/unit/*.test.mjs",
+    "test": "npm run check && npm run test:unit && playwright test"
   },
   "repository": {
     "type": "git",
