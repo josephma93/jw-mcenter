@@ -11,6 +11,7 @@ import {
     mergeMap,
     tap,
 } from 'rxjs';
+import { moveItemSwapWrap } from './presentation-state.mjs';
 
 /**
  * Media kind detected for a file. Doubles as the EJS template flag name.
@@ -339,11 +340,9 @@ intentToClearFiles$.subscribe(() => {
  */
 function moveFile(index, delta) {
     const currentItems = filesState$.getValue();
-    const n = currentItems.length;
-    const newIndex = (index + delta + n) % n;
-    if (newIndex !== index) {
-        [currentItems[index], currentItems[newIndex]] = [currentItems[newIndex], currentItems[index]];
-        filesState$.next([...currentItems]);
+    const nextItems = moveItemSwapWrap(currentItems, index, delta);
+    if (nextItems.some((item, itemIndex) => item !== currentItems[itemIndex])) {
+        filesState$.next(nextItems);
     }
 }
 
