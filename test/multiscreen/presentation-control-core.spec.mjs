@@ -34,45 +34,55 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
     await page.goto('/');
     await expect(page.locator('#screensPermissionBtn')).toBeHidden();
 
-    /** @type {string | null} */
-    let emptyDialogMessage = null;
-    page.once('dialog', async dialog => {
-        emptyDialogMessage = dialog.message();
-        await dialog.accept();
-    });
-    await page.locator('#startPresentationBtn').click();
-    expect(emptyDialogMessage).toMatch(/Agrega al menos un archivo/);
-
-    await page.locator('#fileInput').setInputFiles([
-        mediaFixturePath('mp4'),
-        mediaFixturePath('mp3'),
-        mediaFixturePath('smallPng'),
-    ]);
-    await expect(page.locator('#fileList .file-item')).toHaveCount(3);
-
-    await page.locator('#monitorSelect').selectOption('1');
-
     await expect(page.locator('#endPresentationBtn')).toBeDisabled();
+    await expect(page.locator('#blankScreenBtn')).toBeDisabled();
     await expect(page.locator('#prevMediaBtn')).toBeDisabled();
     await expect(page.locator('#nextMediaBtn')).toBeDisabled();
     await expect(page.locator('#rewindBtn')).toBeDisabled();
     await expect(page.locator('#fastForwardBtn')).toBeDisabled();
     await expect(page.locator('#playPauseBtn')).toBeDisabled();
 
+    // The secondary monitor is auto-selected; wait for it before starting.
+    await expect(page.locator('#monitorSelect')).toHaveValue('1');
+
+    // Starting with an empty playlist opens the presenter on a blank stage.
     const popupPromise = page.context().waitForEvent('page');
     await page.locator('#startPresentationBtn').click();
     const presenter = await popupPromise;
     const presenterProblems = collectProblems(presenter);
     await presenter.waitForLoadState('domcontentloaded');
+    expect(await presenter.evaluate(() => window.screenX)).toBeGreaterThanOrEqual(1920);
 
     await expect(page.locator('#startPresentationBtn')).toBeDisabled();
     await expect(page.locator('#endPresentationBtn')).toBeEnabled();
-    await expect(page.locator('#prevMediaBtn')).toBeEnabled();
+    // Already blank: nothing to blank out, nothing to play or seek.
+    await expect(page.locator('#blankScreenBtn')).toBeDisabled();
+    await expect(page.locator('#playPauseBtn')).toBeDisabled();
+    await expect(page.locator('#playbackTimeDisplay')).toHaveText('--:-- / --:--');
+    await expect(presenter.locator('#media-container > *')).toHaveCount(0);
+
+    // Adding files while blank must not push anything onto the presenter.
+    // The 20s fixtures keep the video/audio playing through the whole
+    // choreography; the 1s samples end before the playback assertions run.
+    await page.locator('#fileInput').setInputFiles([
+        mediaFixturePath('longMp4'),
+        mediaFixturePath('longMp3'),
+        mediaFixturePath('smallPng'),
+    ]);
+    await expect(page.locator('#fileList .file-item')).toHaveCount(3);
+    await expect(presenter.locator('#media-container > *')).toHaveCount(0);
+    await expect(page.locator('#blankScreenBtn')).toBeDisabled();
+
+    // The operator decides what gets shown.
+    await page.locator('#fileList .file-item').nth(0).locator('.show-btn').click();
+
+    await expect(page.locator('#blankScreenBtn')).toBeEnabled();
+    // First playlist item: there is nothing before it to navigate to.
+    await expect(page.locator('#prevMediaBtn')).toBeDisabled();
     await expect(page.locator('#nextMediaBtn')).toBeEnabled();
     await expect(page.locator('#rewindBtn')).toBeEnabled();
     await expect(page.locator('#fastForwardBtn')).toBeEnabled();
     await expect(page.locator('#playPauseBtn')).toBeEnabled();
-    expect(await presenter.evaluate(() => window.screenX)).toBeGreaterThanOrEqual(1920);
 
     await waitForPresenterElement(presenter, 'VIDEO');
     await presenter.waitForFunction(() => {
@@ -80,6 +90,7 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
         return video instanceof HTMLVideoElement && video.currentTime > 0.2;
     });
     await expectTimeDisplayToAdvance(page);
+    await expect(page.locator('#playPauseBtn')).toHaveText('⏸️');
 
     await page.locator('#playPauseBtn').click();
     await presenter.waitForFunction(() => {
@@ -103,12 +114,14 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
     });
     expect(pauseSample.paused).toBe(true);
     expect(pauseSample.delta).toBeLessThan(0.02);
+    await expect(page.locator('#playPauseBtn')).toHaveText('▶️');
 
     await page.locator('#playPauseBtn').click();
     await presenter.waitForFunction(() => {
         const video = document.querySelector('#media-container > video');
         return video instanceof HTMLVideoElement && !video.paused;
     });
+    await expect(page.locator('#playPauseBtn')).toHaveText('⏸️');
 
     const videoDuration = await presenter.evaluate(() => {
         const video = document.querySelector('#media-container > video');
@@ -137,6 +150,9 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
             video.currentTime = video.duration;
         }
     });
+    // Seeking to the end fires 'ended': the play/pause button must reflect
+    // that the media is no longer playing instead of still offering pause.
+    await expect(page.locator('#playPauseBtn')).toHaveText('▶️');
     await page.locator('#rewindBtn').click();
     await presenter.waitForFunction(
         /** @param {number} previousTime */
@@ -156,19 +172,37 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
         return audio instanceof HTMLAudioElement && audio.currentTime > 0.2;
     });
 
-    await page.locator('#nextMediaBtn').click();
+    await page.locator('#fileList .file-item').nth(2).locator('.show-btn').click();
     await waitForPresenterElement(presenter, 'IMG');
     await presenter.waitForFunction(() => {
         const image = document.querySelector('#media-container > img');
         return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
     });
+    await expect(page.locator('#fileList .file-item').nth(2)).toHaveClass(/file-item--current/);
     await expect(page.locator('#playbackTimeDisplay')).toHaveText('--:-- / --:--');
+    // Images have no timeline, and this is the last playlist item.
+    await expect(page.locator('#playPauseBtn')).toBeDisabled();
+    await expect(page.locator('#rewindBtn')).toBeDisabled();
+    await expect(page.locator('#fastForwardBtn')).toBeDisabled();
+    await expect(page.locator('#nextMediaBtn')).toBeDisabled();
+    await expect(page.locator('#prevMediaBtn')).toBeEnabled();
+
+    // Blank the stage mid-presentation, then bring the image back.
+    await page.locator('#blankScreenBtn').click();
+    await expect(presenter.locator('#media-container > *')).toHaveCount(0);
+    await expect(page.locator('#blankScreenBtn')).toBeDisabled();
+    await expect(page.locator('#fileList .file-item--current')).toHaveCount(0);
+    await expect(page.locator('#playbackTimeDisplay')).toHaveText('--:-- / --:--');
+    await page.locator('#fileList .file-item').nth(2).locator('.show-btn').click();
+    await waitForPresenterElement(presenter, 'IMG');
+    await expect(page.locator('#fileList .file-item').nth(2)).toHaveClass(/file-item--current/);
 
     const presenterManualClose = presenter.waitForEvent('close');
     await presenter.close();
     await presenterManualClose;
     await expect(page.locator('#startPresentationBtn')).toBeEnabled({ timeout: 3000 });
     await expect(page.locator('#endPresentationBtn')).toBeDisabled({ timeout: 3000 });
+    await expect(page.locator('#blankScreenBtn')).toBeDisabled({ timeout: 3000 });
     await expect(page.locator('#prevMediaBtn')).toBeDisabled({ timeout: 3000 });
     await expect(page.locator('#nextMediaBtn')).toBeDisabled({ timeout: 3000 });
     await expect(page.locator('#rewindBtn')).toBeDisabled({ timeout: 3000 });

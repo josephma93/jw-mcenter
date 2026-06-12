@@ -3,27 +3,29 @@
 .screens-permission-btn {
     display: none;
     margin: 0 auto 8px;
-    padding: 6px 12px;
 }
 
 #canvas-container {
-    border: 2px solid #000;
-    background: #ddd;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #e9ecef;
     position: relative;
     overflow: hidden;
-    flex: 1;
+    flex: 0 0 auto;
+    width: min(100%, 380px);
+    height: clamp(120px, 16vh, 155px);
 }
 
 #layoutCanvas {
-    background-color: #ddd;
+    background-color: #e9ecef;
     width: 100%;
     height: 100%;
 }
 
 .canvas-legend {
-    font-size: 0.8em;
-    padding: 10px 0 0 0;
-    line-height: 0.9em;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    padding: 8px 0 0 0;
     text-align: end;
 }
 
@@ -42,6 +44,8 @@
     margin-right: 5px;
 }
 
+/* Colorblind-friendly colors (Okabe-Ito palette), in sync with the canvas
+   drawing in screens-manager.js. */
 .primary-screen {
     background-color: #009E73;
     border: 2px solid #006f5b;
@@ -58,9 +62,12 @@
 }
 
 #legend {
-    background: #fff;
-    border: 1px solid #ccc;
-    padding: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    min-width: 360px;
     text-align: end;
 }
 
@@ -68,14 +75,30 @@
     background: rgb(190 190 190 / 50%);
 }
 
+#legend .close-btn {
+    border: none;
+    background: transparent;
+    padding: 4px 8px;
+    color: var(--text-muted);
+}
+
+#legend .close-btn:hover:enabled {
+    background: #eef1f4;
+    color: var(--text);
+}
+
 .legend-table {
     width: 100%;
     border-collapse: collapse;
-    margin: 10px 0;
+    margin: 10px 0 0;
+
+    th {
+        background: #f6f7f9;
+    }
 
     th,
     td {
-        border: 1px solid #ccc;
+        border: 1px solid var(--border);
         padding: 8px;
         text-align: left;
     }

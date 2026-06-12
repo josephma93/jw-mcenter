@@ -11,6 +11,7 @@ export const ACTION_CODES = {
     FAST_FORWARD: 'fast_forward',
     REWIND: 'rewind',
     MEDIA_TIME_UPDATE: 'media_time_update',
+    PLAYBACK_STATE: 'playback_state',
     PING: 'ping',
     PONG: 'pong'
 };
@@ -26,7 +27,8 @@ const TRANSIENT_ACTION_CODES = new Set([
     ACTION_CODES.REWIND,
     ACTION_CODES.PING,
     ACTION_CODES.PONG,
-    ACTION_CODES.MEDIA_TIME_UPDATE
+    ACTION_CODES.MEDIA_TIME_UPDATE,
+    ACTION_CODES.PLAYBACK_STATE
 ]);
 
 /**

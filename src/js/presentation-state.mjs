@@ -15,12 +15,13 @@
  */
 
 /**
- * @typedef {'image' | 'video' | 'audio'} PresenterMediaType
+ * 'blank' means "show nothing": the presenter clears its stage entirely.
+ * @typedef {'image' | 'video' | 'audio' | 'blank'} PresenterMediaType
  */
 
 /**
  * @typedef {Object} UpdateMediaPayload
- * @property {string} mediaUrl
+ * @property {string} mediaUrl Empty string when mediaType is 'blank'.
  * @property {PresenterMediaType} mediaType
  */
 
@@ -88,6 +89,20 @@ export function stepCurrentItem(items, currentItem, delta) {
 }
 
 /**
+ * Select the playlist item at index. Out-of-range indices return null.
+ * @template T
+ * @param {readonly T[]} items
+ * @param {number} index
+ * @returns {T | null}
+ */
+export function itemAtIndex(items, index) {
+    if (index < 0 || index >= items.length) {
+        return null;
+    }
+    return items[index] ?? null;
+}
+
+/**
  * @param {DetectedMediaType} detected
  * @returns {PresenterMediaType}
  */
@@ -105,5 +120,17 @@ export function toUpdateMediaPayload(item) {
     return {
         mediaUrl: item.blobURL,
         mediaType: toPresenterMediaType(item.detected),
+    };
+}
+
+/**
+ * Blank goes through the same stateful update_media channel so a presenter
+ * that (re)connects replays "blank" instead of resurrecting older media.
+ * @returns {UpdateMediaPayload}
+ */
+export function toBlankMediaPayload() {
+    return {
+        mediaUrl: '',
+        mediaType: 'blank',
     };
 }

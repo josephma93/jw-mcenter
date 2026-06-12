@@ -2,9 +2,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+    itemAtIndex,
     moveItemSwapWrap,
     resolveCurrentItem,
     stepCurrentItem,
+    toBlankMediaPayload,
     toPresenterMediaType,
     toUpdateMediaPayload,
 } from '../../src/js/presentation-state.mjs';
@@ -59,6 +61,18 @@ test('deleted last current item clamps to new last item', () => {
     assert.equal(resolveCurrentItem(afterDeleteCurrent, gamma, 2), beta);
 });
 
+test('item at index returns the playlist entry or null when out of range', () => {
+    const alpha = item('alpha');
+    const beta = item('beta');
+    const items = [alpha, beta];
+
+    assert.equal(itemAtIndex(items, 0), alpha);
+    assert.equal(itemAtIndex(items, 1), beta);
+    assert.equal(itemAtIndex(items, -1), null);
+    assert.equal(itemAtIndex(items, 2), null);
+    assert.equal(itemAtIndex([], 0), null);
+});
+
 test('prev and next navigation clamps instead of wrapping', () => {
     const alpha = item('alpha');
     const beta = item('beta');
@@ -81,6 +95,13 @@ test('update media payload uses blob URL and mapped presenter type', () => {
     assert.deepEqual(toUpdateMediaPayload(item('clip', 'isVideo')), {
         mediaUrl: 'blob:clip',
         mediaType: 'video',
+    });
+});
+
+test('blank payload travels on the update_media shape with no URL', () => {
+    assert.deepEqual(toBlankMediaPayload(), {
+        mediaUrl: '',
+        mediaType: 'blank',
     });
 });
 

@@ -18,6 +18,8 @@ function readPngSize(filePath) {
 
 test('fixture inventory is complete and files exist', () => {
     assert.deepEqual(Object.keys(mediaFixtures).sort(), [
+        'longMp3',
+        'longMp4',
         'mp3',
         'mp4',
         'portraitPng',

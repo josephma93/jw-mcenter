@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
   <meta charset="UTF-8">
@@ -18,28 +18,13 @@
 
 <body>
   <div class="container">
-    <div class="sidebar">
-      <div class="instructions"></div>
-      <div class="gallery-config">
-        <button>Configuración</button>
-      </div>
-      <div class="media-gallery flex-container">
-        <div class="flex-fixed">
-          <h4>Galería de Medios</h4>
-          <div class="gallery-item">Imagen predeterminada</div>
-        </div>
-        <div class="flex-grow-scroll">
-          lista aquí
-        </div>
-      </div>
-      <div class="configuration-panel">
-        <button>Configuración</button>
-      </div>
-    </div>
-    <div class="main">
-      <div class="monitor-preview">
+    <header class="app-header">
+      <h1>Centro Multimedia <span class="app-header-subtitle">· Panel de Control</span></h1>
+    </header>
+    <main class="main">
+      <section class="monitor-preview card">
         <div class="monitor-canvas">
-          <button id="screensPermissionBtn" class="screens-permission-btn">
+          <button id="screensPermissionBtn" class="screens-permission-btn btn-primary">
             Permitir acceso a los monitores
           </button>
           <div id="canvas-container">
@@ -48,48 +33,54 @@
           <div class="canvas-legend">
             <span>
               <span class="legend-box primary-screen"></span>
-              Primary Screen
+              Pantalla principal
             </span>
             <span>
               <span class="legend-box secondary-screen"></span>
-              Secondary Screen
+              Pantalla secundaria
             </span>
             <span>
               <span class="legend-box browser-window"></span>
-              Browser Window
+              Ventana del navegador
             </span>
           </div>
         </div>
         <div class="monitor-preview-controls">
-          <div>
-            <button type="button" popovertarget="legend">Información de monitores</button>
-          </div>
-          <div>
-            <label>
-              Usar el monitor:
-              <select id="monitorSelect">
-                <option value="">ninguno</option>
-              </select>
-              para visualizar contenido.
-            </label>
-          </div>
+          <h2>Monitores</h2>
+          <label for="monitorSelect">Mostrar el contenido en el monitor:</label>
+          <select id="monitorSelect">
+            <option value="">ninguno</option>
+          </select>
+          <button type="button" popovertarget="legend">Información de monitores</button>
         </div>
-      </div>
-      <div class="presentation-controls">
-        <button id="startPresentationBtn">Iniciar Presentación</button>
-        <button id="endPresentationBtn">Terminar Presentación</button>
-        <button id="prevMediaBtn">Anterior</button>
-        <button id="nextMediaBtn">Siguiente</button>
-        <button id="rewindBtn">⏪ 10s</button>
-        <button id="fastForwardBtn">⏩ 10s</button>
-        <button id="playPauseBtn">▶️/⏸️</button>
+      </section>
+
+      <section class="presentation-controls card">
+        <div class="control-group">
+          <button id="startPresentationBtn" class="btn-primary">Iniciar presentación</button>
+          <button id="endPresentationBtn" class="btn-danger">Terminar presentación</button>
+        </div>
+        <div class="control-group">
+          <button id="blankScreenBtn">Pantalla en blanco</button>
+        </div>
+        <div class="control-group">
+          <button id="prevMediaBtn">⏮ Anterior</button>
+          <button id="rewindBtn">⏪ 10s</button>
+          <button id="playPauseBtn" class="btn-play-pause">▶️</button>
+          <button id="fastForwardBtn">10s ⏩</button>
+          <button id="nextMediaBtn">Siguiente ⏭</button>
+        </div>
         <output id="playbackTimeDisplay" aria-live="polite">--:-- / --:--</output>
-      </div>
-      <div class="media-list">
+      </section>
+
+      <section class="media-list">
         <div class="drop-container" id="dropContainer">
           <div class="drop-header">
-            <button id="selectFilesBtn" aria-label="Seleccionar archivos">Seleccionar Archivos</button>
-            <button id="clearListBtn" aria-label="Vaciar lista">Vaciar Lista</button>
+            <h2>Lista de reproducción</h2>
+            <div class="drop-header-actions">
+              <button id="selectFilesBtn" class="btn-primary">Agregar archivos</button>
+              <button id="clearListBtn" class="btn-danger">Vaciar lista</button>
+            </div>
           </div>
           <div class="drop-content">
             <div id="emptyState" class="empty-state">
@@ -106,21 +97,21 @@
           <p>Los siguientes archivos no son compatibles:</p>
           <ul id="errorList"></ul>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   </div>
 
   <div id="legend" popover>
     <button class="close-btn" popovertarget="legend" popovertargetaction="hide">
-      <span aria-hidden=”true”>❌</span>
-      <span class="sr-only">Close</span>
+      <span aria-hidden="true">✕</span>
+      <span class="sr-only">Cerrar</span>
     </button>
     <table class="legend-table">
       <tr>
-        <th>Screen #</th>
-        <th>Resolution</th>
-        <th>Primary</th>
-        <th>Browser</th>
+        <th>Monitor</th>
+        <th>Resolución</th>
+        <th>Principal</th>
+        <th>Navegador</th>
       </tr>
       <tbody id="legendTableBody"></tbody>
     </table>
@@ -136,10 +127,10 @@
           <%= screen.availWidth %>x<%= screen.availHeight %>
         </td>
         <td>
-          <%= screen.isPrimary ? 'Yes' : '' %>
+          <%= screen.isPrimary ? 'Sí' : '' %>
         </td>
         <td>
-          <%= screen.isBrowserScreen ? 'Yes' : '' %>
+          <%= screen.isBrowserScreen ? 'Sí' : '' %>
         </td>
       </tr>
     <% }); %>
@@ -154,18 +145,21 @@
                     <% } else if (isVideo) { %>
                       <video class="preview" src="<%= blobURL %>" muted preload="metadata"></video>
                     <% } else if (isAudio) { %>
-                      <audio class="preview" src="<%= blobURL %>" controls preload="metadata"></audio>
+                      <span class="preview preview-audio" aria-hidden="true">♫</span>
                     <% } %>
               </div>
               <div class="details">
-                  <p class="original-name">Archivo: <span class="file-name"><%= fileName %></span> (<span><%= fileType %></span>)</p>
-                  <input class="editable-name" type="text" value="<%= fileName %>">
+                  <span class="file-name" title="<%= fileName %>"><%= fileName %></span>
+                  <p class="file-type"><%= fileType %></p>
               </div>
           </div>
           <div class="action-buttons">
-              <div class="controls">
-                  <button class="delete-btn" aria-label="Eliminar archivo">Eliminar</button>
-                  <button class="duplicate-btn" aria-label="Duplicar archivo">Duplicar</button>
+              <div class="file-actions-primary">
+                  <button type="button" class="show-btn btn-primary" aria-label="Mostrar <%= fileName %> ahora">▶ Mostrar</button>
+                  <div class="controls">
+                      <button class="delete-btn" aria-label="Eliminar archivo">Eliminar</button>
+                      <button class="duplicate-btn" aria-label="Duplicar archivo">Duplicar</button>
+                  </div>
               </div>
               <div class="drag-controls">
                   <button class="move-up" aria-label="Mover hacia arriba">↑</button>

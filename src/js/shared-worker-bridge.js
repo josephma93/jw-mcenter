@@ -16,6 +16,8 @@
  * The presenter sends events to the control panel:
  *   - pong: a response to ping; if no ping is received for a while the presenter considers itself orphaned
  *   - media_time_update: { currentTime, duration } reporting media status
+ *   - playback_state: { mediaUrl, isPlaying, hasEnded } reporting the real playback state,
+ *     so the control panel UI reflects reality (ended media, blocked autoplay) instead of guessing
  *
  * Call the exported method `initSharedWorkerRxBridge` to initialize the SharedWorker and obtain all channels.
  */
@@ -42,6 +44,7 @@ export { ACTION_CODES } from './shared-worker-bus.mjs';
  * @property {Channel} rewindChannel - Channel for the rewind command.
  * @property {Channel} pingChannel - Channel for ping messages (control panel to presenter).
  * @property {Channel} mediaTimeUpdateChannel - Channel for media_time_update events.
+ * @property {Channel} playbackStateChannel - Channel for playback_state events.
  * @property {Channel} pongChannel - Channel for pong messages (presenter to control panel).
  */
 
@@ -96,6 +99,7 @@ export function initSharedWorkerRxBridge() {
 
         // Channels for presenter events to the control panel:
         mediaTimeUpdateChannel: createChannel(ACTION_CODES.MEDIA_TIME_UPDATE),
+        playbackStateChannel: createChannel(ACTION_CODES.PLAYBACK_STATE),
         pongChannel: createChannel(ACTION_CODES.PONG)
     };
 }

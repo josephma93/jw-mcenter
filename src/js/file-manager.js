@@ -62,6 +62,8 @@ const intentToClearFiles$ = new Subject();
 const intentToMoveFileUp$ = new Subject();
 /** @type {Subject<number>} */
 const intentToMoveFileDown$ = new Subject();
+/** @type {Subject<number>} */
+const intentToShowFile$ = new Subject();
 /** @type {Subject<FileDescriptor[]>} */
 const unsupportedFiles$ = new Subject();
 
@@ -181,6 +183,11 @@ function initializeDOMThings() {
             e.stopPropagation();
             const index = parseInt(String($(this).closest(".file-item").attr("data-index")), 10);
             intentToMoveFileDown$.next(index);
+        })
+        .on("click", ".show-btn", function (e) {
+            e.stopPropagation();
+            const index = parseInt(String($(this).closest(".file-item").attr("data-index")), 10);
+            intentToShowFile$.next(index);
         });
 }
 
@@ -351,6 +358,7 @@ intentToMoveFileDown$.subscribe(index => moveFile(index, +1));
 
 export default {
     filesState$,
+    intentToShowFile$,
     unsupportedFiles$,
     initialize: initializeDOMThings,
     /** @param {ArrayLike<File>} files */

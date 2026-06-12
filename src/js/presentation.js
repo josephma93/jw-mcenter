@@ -100,6 +100,22 @@ async function tryPlayMedia(element) {
 }
 
 /**
+ * Reports the real playback state to the control panel so its UI never has to
+ * guess. mediaUrl lets the receiver discard reports from a superseded medium.
+ */
+function broadcastPlaybackState() {
+  const element = currentMediaElement;
+  if (!element || !isMediaElement(element)) {
+    return;
+  }
+  channels.playbackStateChannel.send.next({
+    mediaUrl: element.src,
+    isPlaying: !element.paused && !element.ended,
+    hasEnded: element.ended,
+  });
+}
+
+/**
  * @param {string} mediaUrl
  * @param {string} mediaType
  */
@@ -108,6 +124,15 @@ function updateMediaElement(mediaUrl, mediaType) {
   if (!mediaContainer) return;
 
   mediaContainer.innerHTML = '';
+
+  if (mediaType === 'blank' || !mediaUrl) {
+    currentMediaElement = null;
+    currentMediaDuration = 0;
+    pendingPlayRetry = false;
+    clearStatusMessage();
+    return;
+  }
+
   let element;
   if (mediaType === 'video') {
     element = document.createElement('video');
@@ -147,6 +172,13 @@ function updateMediaElement(mediaUrl, mediaType) {
     element.addEventListener('loadedmetadata', () => {
       currentMediaDuration = /** @type {HTMLMediaElement} */ (element).duration;
     });
+    for (const stateEvent of ['play', 'playing', 'pause', 'ended']) {
+      element.addEventListener(stateEvent, () => {
+        if (currentMediaElement === element) {
+          broadcastPlaybackState();
+        }
+      });
+    }
     window.setTimeout(() => {
       if (currentMediaElement === element) {
         void tryPlayMedia(/** @type {HTMLMediaElement} */ (element));
@@ -215,6 +247,9 @@ interval(200).subscribe(() => {
       duration: currentMediaDuration,
       timestamp: Date.now(),
     });
+    // Self-healing: even if a state event is lost, the control panel
+    // converges on the real state within 200ms.
+    broadcastPlaybackState();
   }
 });
 

@@ -34,6 +34,15 @@ import {
 /** @type {BehaviorSubject<RefinedScreen | null>} */
 const selectedMonitorSubject = new BehaviorSubject(/** @type {RefinedScreen | null} */ (null));
 
+/**
+ * Set when the user explicitly picks "ninguno"; cleared when the set of
+ * available monitors changes, so auto-defaulting can apply again.
+ * @type {boolean}
+ */
+let userDeclinedAutoSelect = false;
+/** Comma-joined indices of the last seen secondary monitors. @type {string} */
+let lastAvailableMonitorsKey = '';
+
 /** @type {HTMLCanvasElement} */ let canvas;
 /** @type {CanvasRenderingContext2D} */ let canvasContext;
 /** @type {JQuery<HTMLElement>} */ let $legendTableBody;
@@ -175,8 +184,9 @@ function renderScreenPreview(refinedScreens) {
             canvasContext.strokeRect(scaledWinX, scaledWinY, scaledWinW, scaledWinH);
         }
         canvasContext.fillStyle = 'black';
-        canvasContext.font = '16px sans-serif';
-        canvasContext.fillText((index + 1).toString(), scaledX + 5, scaledY + 20);
+        const labelFontSize = Math.round(Math.max(11, Math.min(16, canvas.height * 0.12)));
+        canvasContext.font = `${labelFontSize}px sans-serif`;
+        canvasContext.fillText((index + 1).toString(), scaledX + 5, scaledY + labelFontSize + 4);
     });
 }
 
@@ -216,6 +226,41 @@ const availableScreensData$ = interval(REFRESH_INTERVAL_MS)
         shareReplay(1),
     );
 
+/**
+ * Defaults the selection to the first secondary (non-browser) monitor
+ * whenever possible: on startup, when monitors are (re)connected, and when
+ * the selected monitor disappears. An explicit "ninguno" choice is respected
+ * until the set of available monitors changes.
+ * @param {RefinedScreen[]} refinedScreens
+ */
+function autoSelectDefaultMonitor(refinedScreens) {
+    const secondaries = refinedScreens.filter(screen => !screen.isBrowserScreen);
+    const availableKey = secondaries.map(screen => screen.index).join(',');
+    if (availableKey !== lastAvailableMonitorsKey) {
+        lastAvailableMonitorsKey = availableKey;
+        userDeclinedAutoSelect = false;
+    }
+
+    const current = selectedMonitorSubject.value;
+    if (current) {
+        const refreshed = secondaries.find(screen => screen.index === current.index) ?? null;
+        if (!refreshed) {
+            selectedMonitorSubject.next(null);
+            $monitorSelect.val('');
+        } else if (JSON.stringify(refreshed) !== JSON.stringify(current)) {
+            // Same monitor, fresher geometry (e.g. resolution change).
+            selectedMonitorSubject.next(refreshed);
+        }
+    }
+
+    if (selectedMonitorSubject.value || userDeclinedAutoSelect || secondaries.length === 0) {
+        return;
+    }
+    const defaultMonitor = secondaries[0];
+    selectedMonitorSubject.next(defaultMonitor);
+    $monitorSelect.val(String(defaultMonitor.index));
+}
+
 // Subscribing starts the polling, which requires the permission to already be
 // granted — only call this after acquireScreenDetails() has succeeded.
 function startScreensStream() {
@@ -224,12 +269,7 @@ function startScreensStream() {
             renderScreenPreview(refined);
             renderPreviewLegend(refined);
             renderAvailableMonitorsSelect(refined);
-
-            const current = selectedMonitorSubject.value;
-            if (current && !refined.some(screen => screen.index === current.index)) {
-                selectedMonitorSubject.next(null);
-                $monitorSelect.val("");
-            }
+            autoSelectDefaultMonitor(refined);
         });
 
     fromEvent($monitorSelect[0], 'change')
@@ -241,6 +281,7 @@ function startScreensStream() {
             }),
         )
         .subscribe(selectedMonitor => {
+            userDeclinedAutoSelect = selectedMonitor === null;
             selectedMonitorSubject.next(selectedMonitor);
         });
 }

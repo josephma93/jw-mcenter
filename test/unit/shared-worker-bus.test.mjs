@@ -32,7 +32,8 @@ test('action code policy keeps only update_media stateful', () => {
         ACTION_CODES.REWIND,
         ACTION_CODES.PING,
         ACTION_CODES.PONG,
-        ACTION_CODES.MEDIA_TIME_UPDATE
+        ACTION_CODES.MEDIA_TIME_UPDATE,
+        ACTION_CODES.PLAYBACK_STATE
     ]) {
         assert.equal(isStatefulActionCode(code), false, `${code} must stay transient`);
         assert.equal(isTransientActionCode(code), true, `${code} must be classified transient`);
