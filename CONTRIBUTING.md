@@ -43,13 +43,16 @@ npm install
 ## Running the app
 
 ```sh
-npm start    # → https://jw-mcenter.localhost
+npm start      # → https://jw-mcenter.localhost on main
 ```
 
-`npm start` runs [portless](https://portless.sh/), which starts the `dev`
-script (a plain static server over `src/`) behind a local HTTPS proxy with a
-stable named URL. The app needs a secure context (`getScreenDetails`,
-SharedWorker), and both `https://*.localhost` and plain `localhost` qualify.
+`npm start` runs [portless](https://portless.sh/), which starts a plain static
+server over `src/` behind a stable named URL. In linked git worktrees, Portless
+prepends the branch-derived worktree prefix, so a branch like
+`orchestrator/T-001-playwright-projects` serves at
+`https://t-001-playwright-projects.jw-mcenter.localhost` instead of colliding
+with `main`. The app needs a secure context (`getScreenDetails`, SharedWorker),
+and both `https://*.localhost` and plain `localhost` qualify.
 
 One-time setup on a new machine (portless binds port 443 and installs a local
 CA, both need elevation once):
@@ -59,11 +62,9 @@ sudo npx portless proxy start --https   # or: npx portless proxy start --port 13
 npx portless trust                      # trust the local CA so the browser shows no warning
 ```
 
-If you don't want the proxy at all, the raw server still works:
-
-```sh
-npm run dev    # plain http://localhost:8080 (or PORT=xxxx npm run dev)
-```
+Playwright also avoids global port collisions. By default, each git worktree is
+assigned a deterministic local test port starting at `4317`; set
+`PLAYWRIGHT_PORT=xxxx` only when you need to override that mapping.
 
 The app is Chromium-only by design (see SRS §2.4).
 
@@ -71,17 +72,18 @@ The app is Chromium-only by design (see SRS §2.4).
 
 | Command | What it does |
 |---|---|
-| `npm start` | Serve the app at `https://jw-mcenter.localhost` via portless |
-| `npm run dev` | Raw static server over `src/`, no proxy |
+| `npm start` | Serve the app through the worktree-aware Portless wrapper |
 | `npm run check` | Type-checks all JS via `tsc --noEmit` (`@ts-check` + JSDoc) — must pass with zero errors |
 | `npm run check:watch` | Same check, continuously on every save — IDE-free live feedback in a terminal (app config; the worker file is covered by `npm run check`) |
-| `npm test` | Runs `npm run check` first, then Playwright smoke tests: both pages boot with zero console errors, playlist add works |
+| `npm test` | Runs `npm run check`, `npm run test:unit`, then all Playwright projects |
 | `npm run vendor` | Regenerates `src/vendor/` from `node_modules` — run only when upgrading a dependency, commit the result |
 
 About `npm run vendor`: it copies browser-ready dist files, except rxjs, which
-ships extensionless imports browsers can't resolve — that one package gets
-flattened into a single ESM file with esbuild. This runs only on dependency
-upgrades; app code is never processed by any tool.
+ships extensionless imports browsers can't resolve. That package is bundled into
+a curated, minified ESM file with esbuild, using only the runtime symbols
+imported from `src/js/`. The script writes `src/vendor/VENDOR_MANIFEST.json` so
+dependency provenance and bundle size stay auditable. This runs only on
+dependency upgrades; app code is never processed by any tool.
 
 ## Testing
 

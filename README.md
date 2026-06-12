@@ -36,7 +36,7 @@ Este proyecto es una aplicación web local diseñada específicamente para la co
 
 ## Cómo Ejecutar
 
-Ver [CONTRIBUTING.md](CONTRIBUTING.md). En corto: `nvm use && npm install && npm run dev`, y abrir la URL de Portless en un navegador Chromium. En worktrees, la URL incluye el prefijo de la rama para poder ejecutar varias copias en paralelo.
+Ver [CONTRIBUTING.md](CONTRIBUTING.md). En corto: `nvm use && npm install && npm start`, y abrir la URL de Portless en un navegador Chromium. En worktrees, la URL incluye el prefijo de la rama para poder ejecutar varias copias en paralelo.
 
 ## Público Objetivo
 

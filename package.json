@@ -4,8 +4,7 @@
   "description": "Local, browser-only multimedia control center for JW meetings. No build step: the browser runs src/ as written.",
   "private": true,
   "scripts": {
-    "dev": "http-server src -c-1 --silent",
-    "start": "portless",
+    "start": "portless run --name jw-mcenter -- http-server src -c-1 --silent",
     "vendor": "node tools/vendor.mjs",
     "check": "tsc -p tsconfig.json && tsc -p tsconfig.worker.json",
     "check:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
