@@ -19,6 +19,11 @@ import { interval } from 'rxjs';
 
 const PING_INTERVAL_MS = 2000;
 const PLAYBACK_TIME_IDLE_TEXT = '--:-- / --:--';
+const MEDIA_KIND_LABELS = {
+    isImage: 'Imagen',
+    isVideo: 'Video',
+    isAudio: 'Audio',
+};
 
 /** @type {Window | null} */
 let presentationWindow = null;
@@ -47,6 +52,10 @@ let commandChannels = null;
 /** @type {JQuery<HTMLElement>} */ let $fastForwardBtn;
 /** @type {JQuery<HTMLElement>} */ let $playPauseBtn;
 /** @type {JQuery<HTMLElement>} */ let $playbackTimeDisplay;
+/** @type {JQuery<HTMLElement>} */ let $playbackProgressBar;
+/** @type {JQuery<HTMLElement>} */ let $currentMediaName;
+/** @type {JQuery<HTMLElement>} */ let $currentMediaMeta;
+/** @type {JQuery<HTMLElement>} */ let $mediaControlHint;
 /** @type {JQuery<HTMLElement>} */ let $fileList;
 
 function isPresenterOpen() {
@@ -81,17 +90,31 @@ function setPlaybackTimeDisplay(value) {
     $playbackTimeDisplay.text(value);
 }
 
+/**
+ * @param {number} percent
+ */
+function setPlaybackProgress(percent) {
+    const clampedPercent = Math.max(0, Math.min(100, percent));
+    $playbackProgressBar.css('width', `${clampedPercent}%`);
+}
+
 function resetPlaybackTimeDisplay() {
     setPlaybackTimeDisplay(PLAYBACK_TIME_IDLE_TEXT);
+    setPlaybackProgress(0);
 }
 
 /**
  * @param {{ currentTime?: unknown, duration?: unknown }} payload
  */
 function renderPlaybackTimeUpdate(payload) {
+    const currentTime = Number(payload.currentTime);
+    const duration = Number(payload.duration);
     setPlaybackTimeDisplay(
-        `${formatPlaybackTime(Number(payload.currentTime))} / ${formatPlaybackTime(Number(payload.duration))}`
+        `${formatPlaybackTime(currentTime)} / ${formatPlaybackTime(duration)}`
     );
+    setPlaybackProgress(Number.isFinite(currentTime) && Number.isFinite(duration) && duration > 0
+        ? (currentTime / duration) * 100
+        : 0);
 }
 
 function renderPlaylistCurrentHighlight() {
@@ -101,6 +124,32 @@ function renderPlaylistCurrentHighlight() {
         const isCurrent = presenterAlive && !!currentItem && item === currentItem;
         $item.toggleClass('file-item--current', isCurrent);
     });
+}
+
+function renderCurrentMediaSummary() {
+    if (!presenterAlive) {
+        $currentMediaName.text('Sin presentación activa');
+        $currentMediaMeta.text('Inicia la presentación o muestra un archivo.');
+        $mediaControlHint.text('Los controles de reproducción se activan cuando hay audio o video en pantalla.');
+        return;
+    }
+
+    if (!currentItem) {
+        $currentMediaName.text('Pantalla en blanco');
+        $currentMediaMeta.text('El presentador no muestra contenido.');
+        $mediaControlHint.text('Usa Mostrar en la lista para enviar contenido al presentador.');
+        return;
+    }
+
+    const mediaKind = MEDIA_KIND_LABELS[currentItem.detected] ?? 'Archivo';
+    const fileType = currentItem.file.type || 'Tipo desconocido';
+    const isTimeBasedMedia = currentItem.detected === 'isVideo' || currentItem.detected === 'isAudio';
+
+    $currentMediaName.text(currentItem.file.name);
+    $currentMediaMeta.text(`${mediaKind} - ${fileType}`);
+    $mediaControlHint.text(isTimeBasedMedia
+        ? 'Reproducción, pausa y saltos de 10 segundos aplican a este contenido.'
+        : 'Imagen en pantalla: reproducción, pausa y saltos de tiempo no aplican.');
 }
 
 function renderControlState() {
@@ -120,8 +169,14 @@ function renderControlState() {
     $rewindBtn.prop('disabled', transportDisabled);
     $fastForwardBtn.prop('disabled', transportDisabled);
     $playPauseBtn.prop('disabled', transportDisabled);
+    const playPauseAction = isPlaying ? 'Pausar contenido actual' : 'Reproducir contenido actual';
     $playPauseBtn.text(isPlaying ? '⏸️' : '▶️');
-    $playPauseBtn.attr('aria-label', isPlaying ? 'Pausar' : 'Reproducir');
+    $playPauseBtn.attr({
+        'aria-label': playPauseAction,
+        title: playPauseAction,
+        'data-tooltip': playPauseAction,
+    });
+    renderCurrentMediaSummary();
     renderPlaylistCurrentHighlight();
 }
 
@@ -285,6 +340,10 @@ function initialize(fileManager, screenManager) {
     $fastForwardBtn = $('#fastForwardBtn');
     $playPauseBtn = $('#playPauseBtn');
     $playbackTimeDisplay = $('#playbackTimeDisplay');
+    $playbackProgressBar = $('#playbackProgressBar');
+    $currentMediaName = $('#currentMediaName');
+    $currentMediaMeta = $('#currentMediaMeta');
+    $mediaControlHint = $('#mediaControlHint');
     $fileList = $('#fileList');
 
     screenManager.selectedMonitor$.subscribe(monitor => {

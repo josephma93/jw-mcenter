@@ -16,15 +16,17 @@ test('window-management grant exposes the secondary monitor only', async ({ page
     // The first secondary monitor is auto-selected as the default.
     await expect(page.locator('#monitorSelect')).toHaveValue('1');
 
-    await page.getByRole('button', { name: 'Información de monitores' }).click();
-    await expect(page.locator('#legend')).toBeVisible();
+    await page.getByRole('button', { name: 'Monitores' }).click();
+    await expect(page.locator('#monitorFlyoutPanel')).toBeVisible();
 
     const legendRows = page.locator('#legendTableBody tr');
     await expect(legendRows).toHaveCount(2);
     await expect(legendRows.nth(0)).toContainText('1');
     await expect(legendRows.nth(0)).toContainText('1920x1080');
+    await expect(legendRows.nth(0)).toContainText('Principal');
     await expect(legendRows.nth(1)).toContainText('2');
     await expect(legendRows.nth(1)).toContainText('1280x720');
+    await expect(legendRows.nth(1)).toContainText('Secundaria');
 
     expectNoProblems(problems);
 });

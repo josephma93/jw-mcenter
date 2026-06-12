@@ -13,10 +13,12 @@ test('control panel boots with permission-denied flow isolated to smoke', async 
     await page.goto('/');
     await expect(page.locator('#startPresentationBtn')).toBeVisible();
     await expect(page.locator('#emptyState')).toBeVisible();
-    await expect(page.locator('#screensPermissionBtn')).toBeHidden();
-
-    await page.locator('body').click();
+    await expect(page.locator('#screensPermissionDialog')).toBeVisible();
     await expect(page.locator('#screensPermissionBtn')).toBeVisible();
+    await expect(page.locator('#screensPermissionBtn')).toBeFocused();
+
+    await page.locator('#screensPermissionBtn').click();
+    await expect(page.locator('#screensPermissionStatus')).toContainText('No se pudo obtener acceso');
     await flushFrames(page);
 
     expectNoProblems(problems, EXPECTED_PERMISSION_NOISE);

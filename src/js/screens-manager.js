@@ -48,7 +48,13 @@ let lastAvailableMonitorsKey = '';
 /** @type {JQuery<HTMLElement>} */ let $legendTableBody;
 /** @type {JQuery<HTMLElement>} */ let $monitorSelect;
 /** @type {HTMLElement} */ let canvasContainer;
+/** @type {HTMLDialogElement} */ let screensPermissionDialog;
+/** @type {HTMLButtonElement} */ let screensPermissionBtn;
+/** @type {HTMLElement} */ let screensPermissionStatus;
+/** @type {HTMLElement} */ let monitorFlyoutPanel;
 /** @type {string} */ let legendTmpl;
+/** @type {RefinedScreen[]} */
+let latestRefinedScreens = [];
 
 /** @type {Promise<ScreenDetails> | null} */
 let screenDetailsPromise = null;
@@ -204,6 +210,19 @@ function renderPreviewLegend(refinedScreens) {
     $legendTableBody.empty().html(legendHTML);
 }
 
+function isMonitorFlyoutOpen() {
+    return monitorFlyoutPanel.matches(':popover-open');
+}
+
+function initializeMonitorFlyout() {
+    monitorFlyoutPanel = /** @type {HTMLElement} */ (document.getElementById('monitorFlyoutPanel'));
+    monitorFlyoutPanel.addEventListener('toggle', () => {
+        if (isMonitorFlyoutOpen() && latestRefinedScreens.length > 0) {
+            requestAnimationFrame(() => renderScreenPreview(latestRefinedScreens));
+        }
+    });
+}
+
 /** @param {RefinedScreen[]} refinedScreens */
 function renderAvailableMonitorsSelect(refinedScreens) {
     const currentSelected = $monitorSelect.val();
@@ -272,7 +291,10 @@ function autoSelectDefaultMonitor(refinedScreens) {
 function startScreensStream() {
     availableScreensData$
         .subscribe(refined => {
-            renderScreenPreview(refined);
+            latestRefinedScreens = refined;
+            if (isMonitorFlyoutOpen()) {
+                renderScreenPreview(refined);
+            }
             renderPreviewLegend(refined);
             renderAvailableMonitorsSelect(refined);
             autoSelectDefaultMonitor(refined);
@@ -292,66 +314,93 @@ function startScreensStream() {
         });
 }
 
+/**
+ * @param {string} message
+ */
+function setPermissionStatus(message) {
+    screensPermissionStatus.textContent = message;
+}
+
+function closePermissionDialog() {
+    setPermissionStatus('');
+    screensPermissionBtn.style.display = 'none';
+    if (screensPermissionDialog.open) {
+        screensPermissionDialog.close();
+    }
+}
+
+/**
+ * @param {string} [message]
+ */
+function showPermissionDialog(message = '') {
+    setPermissionStatus(message);
+    screensPermissionBtn.disabled = false;
+    screensPermissionBtn.textContent = 'Permitir acceso a los monitores';
+    screensPermissionBtn.style.display = 'inline-flex';
+    if (!screensPermissionDialog.open) {
+        screensPermissionDialog.showModal();
+    }
+    screensPermissionBtn.focus();
+}
+
+/**
+ * @param {boolean} busy
+ */
+function setPermissionButtonBusy(busy) {
+    screensPermissionBtn.disabled = busy;
+    screensPermissionBtn.textContent = busy
+        ? 'Solicitando acceso...'
+        : 'Permitir acceso a los monitores';
+}
+
+async function requestScreenPermissionFromDialog() {
+    setPermissionButtonBusy(true);
+    setPermissionStatus('');
+    try {
+        await acquireScreenDetails();
+        closePermissionDialog();
+        startScreensStream();
+    } catch (err) {
+        setPermissionStatus('No se pudo obtener acceso. Acepta el permiso del navegador o habilítalo en la configuración del sitio.');
+        setPermissionButtonBusy(false);
+        screensPermissionBtn.focus();
+    }
+}
+
+function initializePermissionDialog() {
+    screensPermissionDialog = /** @type {HTMLDialogElement} */ (document.getElementById('screensPermissionDialog'));
+    screensPermissionBtn = /** @type {HTMLButtonElement} */ (document.getElementById('screensPermissionBtn'));
+    screensPermissionStatus = /** @type {HTMLElement} */ (document.getElementById('screensPermissionStatus'));
+
+    screensPermissionDialog.addEventListener('cancel', event => {
+        event.preventDefault();
+    });
+    screensPermissionBtn.addEventListener('click', requestScreenPermissionFromDialog);
+}
+
 async function initializeDOMThings() {
     canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('layoutCanvas'));
     canvasContext = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
     $legendTableBody = $('#legendTableBody');
     $monitorSelect = $('#monitorSelect');
+    initializeMonitorFlyout();
+    initializePermissionDialog();
 
     canvasContainer = /** @type {HTMLElement} */ (document.getElementById('canvas-container'));
     legendTmpl = /** @type {HTMLElement} */ (document.getElementById("legendTemplate")).innerHTML.trim();
 
-    if (await queryPermissionState() === 'granted') {
+    const permissionState = await queryPermissionState();
+    if (permissionState === 'granted') {
         try {
             await acquireScreenDetails();
             startScreensStream();
             return;
-        } catch { /* fall through to the first-interaction request */ }
+        } catch { /* fall through to the modal request */ }
     }
 
-    requestPermissionOnFirstInteraction();
-}
-
-// The permission prompt needs transient activation, so request it inside the
-// user's first interaction with the page — same idea as the old
-// multi-screen.js userActivation poll, but event-driven instead of timed.
-// If the prompt is dismissed or denied, a retry button appears.
-function requestPermissionOnFirstInteraction() {
-    const EVENTS = ['click', 'keydown'];
-    async function onFirstInteraction() {
-        // Not every event grants user activation (e.g. the Escape key or
-        // browser-reserved shortcuts). If the browser says there is no
-        // transient activation right now, the permission prompt is guaranteed
-        // to fail — keep waiting for a real interaction instead of burning
-        // the attempt. (isActive, not hasBeenActive: the prompt needs the
-        // transient kind, and sticky activation outlives it.)
-        const ua = navigator.userActivation;
-        if (ua && !ua.isActive) {
-            return;
-        }
-        EVENTS.forEach(e => document.removeEventListener(e, onFirstInteraction, true));
-        try {
-            await acquireScreenDetails();
-            startScreensStream();
-        } catch {
-            showPermissionRetryButton();
-        }
-    }
-    EVENTS.forEach(e => document.addEventListener(e, onFirstInteraction, true));
-}
-
-function showPermissionRetryButton() {
-    const $permissionBtn = $('#screensPermissionBtn');
-    $permissionBtn.show().off('click').on('click', async () => {
-        try {
-            await acquireScreenDetails();
-            $permissionBtn.hide();
-            startScreensStream();
-        } catch (err) {
-            alert('Sin acceso a los monitores: ' + /** @type {Error} */ (err).message
-                + '\nSi el permiso fue bloqueado, habilítalo en la configuración del sitio (ícono junto a la URL).');
-        }
-    });
+    showPermissionDialog(permissionState === 'denied'
+        ? 'El permiso de monitores está bloqueado. Habilítalo en la configuración del sitio y vuelve a intentarlo.'
+        : '');
 }
 
 export default {

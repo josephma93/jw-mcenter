@@ -1,20 +1,86 @@
-/* Hidden by default; screens-manager shows it when the window-management
-   permission hasn't been granted yet. */
+/* Hidden by default; screens-manager shows it inside the blocking modal when
+   window-management permission is needed. */
 .screens-permission-btn {
     display: none;
-    margin: 0 auto 8px;
+}
+
+.screens-permission-dialog {
+    width: min(520px, calc(100vw - 32px));
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 20px 50px rgba(31, 41, 51, 0.22);
+}
+
+.screens-permission-dialog::backdrop {
+    background: rgba(31, 41, 51, 0.42);
+}
+
+.screens-permission-content {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 14px;
+    padding: 22px 22px 12px;
+}
+
+.screens-permission-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #f0faf2;
+    color: var(--primary-dark);
+    font-size: 1.1rem;
+}
+
+.screens-permission-dialog h2 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+}
+
+.screens-permission-dialog p {
+    margin: 0;
+    line-height: 1.45;
+}
+
+.screens-permission-note {
+    margin-top: 10px !important;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.screens-permission-status {
+    min-height: 1.3em;
+    margin-top: 10px !important;
+    color: var(--danger);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.screens-permission-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 14px 22px 20px;
+}
+
+.screens-permission-dialog[open] .screens-permission-btn {
+    display: inline-flex;
 }
 
 #canvas-container {
-    --canvas-preview-height: clamp(120px, 16vh, 155px);
+    --canvas-preview-height: clamp(150px, 24vh, 220px);
 
     border-radius: 6px;
     background: #e9ecef;
     position: relative;
     overflow: hidden;
     flex: 0 0 auto;
-    width: min(100%, calc(var(--canvas-preview-height) * 4 / 3));
-    aspect-ratio: 4 / 3;
+    width: 100%;
+    height: var(--canvas-preview-height);
 }
 
 #layoutCanvas {
@@ -25,29 +91,6 @@
     outline-offset: -1px;
     width: 100%;
     height: 100%;
-    aspect-ratio: 4 / 3;
-}
-
-.canvas-legend {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    padding: 8px 0 0 0;
-    text-align: end;
-}
-
-.canvas-legend > span {
-    display: inline-flex;
-    align-items: center;
-    + span {
-        margin-left: 1em;
-    }
-}
-
-.legend-box {
-    display: inline-block;
-    width: 1em;
-    height: 1em;
-    margin-right: 5px;
 }
 
 /* Colorblind-friendly colors (Okabe-Ito palette), in sync with the canvas
@@ -67,45 +110,91 @@
     border: 2px solid #D55E00;
 }
 
-#legend {
-    background: var(--surface);
+.monitor-details {
+    overflow: hidden;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    min-width: 360px;
-    text-align: end;
-}
-
-#legend::backdrop {
-    background: rgb(190 190 190 / 50%);
-}
-
-#legend .close-btn {
-    border: none;
-    background: transparent;
-    padding: 4px 8px;
-    color: var(--text-muted);
-}
-
-#legend .close-btn:hover:enabled {
-    background: #eef1f4;
-    color: var(--text);
+    border-radius: 6px;
+    background: var(--surface);
 }
 
 .legend-table {
     width: 100%;
-    border-collapse: collapse;
-    margin: 10px 0 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0;
+    font-size: 0.9rem;
+}
 
-    th {
-        background: #f6f7f9;
-    }
+.legend-table caption {
+    padding: 9px 11px;
+    background: var(--surface-muted);
+    color: var(--text);
+    font-weight: 700;
+    text-align: left;
+}
 
-    th,
-    td {
-        border: 1px solid var(--border);
-        padding: 8px;
-        text-align: left;
-    }
+.legend-table th {
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.legend-table th,
+.legend-table td {
+    border-top: 1px solid var(--border);
+    padding: 9px 11px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.legend-table tbody tr:hover {
+    background: #f8fafb;
+}
+
+.monitor-id {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.monitor-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex: none;
+}
+
+.monitor-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    margin: 2px 4px 2px 0;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.monitor-status--primary {
+    background: rgba(0, 158, 115, 0.12);
+    color: #006f5b;
+}
+
+.monitor-status--secondary {
+    background: rgba(86, 180, 233, 0.14);
+    color: #125f83;
+}
+
+.monitor-status--browser {
+    background: rgba(230, 159, 0, 0.16);
+    color: #925f00;
+}
+
+.monitor-status:last-child {
+    margin-right: 0;
 }

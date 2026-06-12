@@ -41,6 +41,7 @@ const IS_AUDIO = 'isAudio';
 /** @type {JQuery<HTMLElement>} */ let $dropContainer;
 /** @type {JQuery<HTMLElement>} */ let $fileList;
 /** @type {JQuery<HTMLElement>} */ let $emptyState;
+/** @type {JQuery<HTMLElement>} */ let $playlistCount;
 /** @type {JQuery<HTMLElement>} */ let $fileInput;
 /** @type {JQuery<HTMLElement>} */ let $selectFilesBtn;
 /** @type {JQuery<HTMLElement>} */ let $clearListBtn;
@@ -71,6 +72,7 @@ function initializeDOMThings() {
     $dropContainer = $("#dropContainer");
     $fileList = $("#fileList");
     $emptyState = $("#emptyState");
+    $playlistCount = $("#playlistCount");
     $fileInput = $("#fileInput");
     $selectFilesBtn = $("#selectFilesBtn");
     $clearListBtn = $("#clearListBtn");
@@ -220,6 +222,16 @@ function createFileItem(file, detected, providedBlobURL) {
 }
 
 /**
+ * @param {DetectedMediaType} detected
+ * @returns {string}
+ */
+function mediaKindLabel(detected) {
+    if (detected === IS_IMAGE) return 'Imagen';
+    if (detected === IS_VIDEO) return 'Video';
+    return 'Audio';
+}
+
+/**
  * @param {File} file
  * @returns {DetectedMediaType | ''} Empty string when the browser can't play it.
  */
@@ -249,6 +261,7 @@ function handleFileListStateChange(newState) {
             blobURL: blobURL,
             fileType: item.file.type,
             fileName: item.file.name,
+            mediaKind: mediaKindLabel(item.detected),
             [IS_IMAGE]: false,
             [IS_VIDEO]: false,
             [IS_AUDIO]: false,
@@ -264,6 +277,7 @@ function handleFileListStateChange(newState) {
     $fileList.empty().append(frag);
     $fileList.sortable("refresh");
     $emptyState.toggle(newState.length === 0);
+    $playlistCount.text(`${newState.length} ${newState.length === 1 ? 'elemento' : 'elementos'}`);
 }
 
 const fileDescriptors$ = intentToAddFiles$.pipe(

@@ -6,7 +6,8 @@ test('control panel boots before any autoplay-dependent interaction', async ({ p
     const problems = collectProblems(page);
     await page.goto('/');
     await expect(page.locator('#startPresentationBtn')).toBeVisible();
-    await expect(page.locator('#screensPermissionBtn')).toBeHidden();
+    await expect(page.locator('#screensPermissionDialog')).toBeVisible();
+    await expect(page.locator('#screensPermissionBtn')).toBeFocused();
     await flushFrames(page);
     expectNoProblems(problems);
 });

@@ -20,63 +20,123 @@
   <div class="container">
     <header class="app-header">
       <h1>Centro Multimedia <span class="app-header-subtitle">· Panel de Control</span></h1>
-    </header>
-    <main class="main">
-      <section class="monitor-preview card">
-        <div class="monitor-canvas">
-          <button id="screensPermissionBtn" class="screens-permission-btn btn-primary">
-            Permitir acceso a los monitores
-          </button>
-          <div id="canvas-container">
-            <canvas id="layoutCanvas" width="208" height="156"></canvas>
+      <section id="monitorFlyout" class="monitor-preview monitor-flyout" aria-label="Monitores">
+        <button
+          id="monitorFlyoutToggle"
+          class="monitor-flyout-toggle"
+          type="button"
+          popovertarget="monitorFlyoutPanel"
+        >
+          <span class="section-icon" aria-hidden="true">▣</span>
+          Monitores
+        </button>
+        <div id="monitorFlyoutPanel" class="monitor-flyout-panel card" popover="auto">
+          <div class="monitor-map">
+            <div id="canvas-container">
+              <canvas id="layoutCanvas" width="208" height="156"></canvas>
+            </div>
           </div>
-          <div class="canvas-legend">
-            <span>
-              <span class="legend-box primary-screen"></span>
-              Pantalla principal
-            </span>
-            <span>
-              <span class="legend-box secondary-screen"></span>
-              Pantalla secundaria
-            </span>
-            <span>
-              <span class="legend-box browser-window"></span>
-              Ventana del navegador
-            </span>
+          <div class="monitor-details">
+            <table class="legend-table">
+              <caption>Mapa e información de monitores</caption>
+              <thead>
+                <tr>
+                  <th>Monitor</th>
+                  <th>Resolución</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="legendTableBody"></tbody>
+            </table>
           </div>
-        </div>
-        <div class="monitor-preview-controls">
-          <h2>Monitores</h2>
-          <label for="monitorSelect">Mostrar el contenido en el monitor:</label>
-          <select id="monitorSelect">
-            <option value="">ninguno</option>
-          </select>
-          <button type="button" popovertarget="legend">Información de monitores</button>
         </div>
       </section>
-
+    </header>
+    <main class="main">
       <section class="presentation-controls card">
-        <div class="control-group">
-          <button id="startPresentationBtn" class="btn-primary">Iniciar presentación</button>
-          <button id="endPresentationBtn" class="btn-danger">Terminar presentación</button>
+        <div class="section-header presentation-header">
+          <h2><span class="section-icon" aria-hidden="true">#</span> Control Maestro</h2>
+          <div class="session-actions">
+            <button id="startPresentationBtn" class="btn-primary">Iniciar presentación</button>
+            <button id="endPresentationBtn" class="btn-danger">Terminar presentación</button>
+          </div>
         </div>
-        <div class="control-group">
-          <button id="blankScreenBtn">Pantalla en blanco</button>
+        <div class="presentation-setup">
+          <div class="monitor-picker">
+            <label for="monitorSelect">Pantalla del presentador</label>
+            <select id="monitorSelect">
+              <option value="">Sin pantalla seleccionada</option>
+            </select>
+          </div>
         </div>
-        <div class="control-group">
-          <button id="prevMediaBtn">⏮ Anterior</button>
-          <button id="rewindBtn">⏪ 10s</button>
-          <button id="playPauseBtn" class="btn-play-pause">▶️</button>
-          <button id="fastForwardBtn">10s ⏩</button>
-          <button id="nextMediaBtn">Siguiente ⏭</button>
+        <div class="now-playing-panel">
+          <div class="now-playing-copy">
+            <span class="now-playing-label">Contenido actual</span>
+            <strong id="currentMediaName">Sin presentación activa</strong>
+            <span id="currentMediaMeta">Inicia la presentación o muestra un archivo.</span>
+          </div>
+          <output id="playbackTimeDisplay" aria-live="polite">--:-- / --:--</output>
         </div>
-        <output id="playbackTimeDisplay" aria-live="polite">--:-- / --:--</output>
+        <div class="playback-progress" aria-hidden="true">
+          <span id="playbackProgressBar"></span>
+        </div>
+        <p id="mediaControlHint" class="media-control-hint">
+          Los controles de reproducción se activan cuando hay audio o video en pantalla.
+        </p>
+        <div class="control-toolbar" aria-label="Controles de presentación">
+          <button
+            id="prevMediaBtn"
+            class="icon-btn"
+            title="Mostrar archivo anterior"
+            data-tooltip="Mostrar archivo anterior"
+            aria-label="Mostrar archivo anterior"
+          >⏮</button>
+          <button
+            id="rewindBtn"
+            class="icon-btn"
+            title="Retroceder 10 segundos"
+            data-tooltip="Retroceder 10 segundos"
+            aria-label="Retroceder 10 segundos"
+          >⏪</button>
+          <button
+            id="playPauseBtn"
+            class="icon-btn btn-play-pause"
+            title="Reproducir contenido actual"
+            data-tooltip="Reproducir contenido actual"
+            aria-label="Reproducir contenido actual"
+          >▶️</button>
+          <button
+            id="fastForwardBtn"
+            class="icon-btn"
+            title="Avanzar 10 segundos"
+            data-tooltip="Avanzar 10 segundos"
+            aria-label="Avanzar 10 segundos"
+          >⏩</button>
+          <button
+            id="nextMediaBtn"
+            class="icon-btn"
+            title="Mostrar archivo siguiente"
+            data-tooltip="Mostrar archivo siguiente"
+            aria-label="Mostrar archivo siguiente"
+          >⏭</button>
+          <span class="toolbar-separator" aria-hidden="true"></span>
+          <button
+            id="blankScreenBtn"
+            class="icon-btn blank-screen-btn"
+            title="Mostrar pantalla en blanco"
+            data-tooltip="Mostrar pantalla en blanco"
+            aria-label="Mostrar pantalla en blanco"
+          >□</button>
+        </div>
       </section>
 
       <section class="media-list">
         <div class="drop-container" id="dropContainer">
           <div class="drop-header">
-            <h2>Lista de reproducción</h2>
+            <div class="playlist-heading">
+              <h2><span class="section-icon" aria-hidden="true">≡</span> Lista de reproducción</h2>
+              <span id="playlistCount" class="playlist-count">0 elementos</span>
+            </div>
             <div class="drop-header-actions">
               <button id="selectFilesBtn" class="btn-primary">Agregar archivos</button>
               <button id="clearListBtn" class="btn-danger">Vaciar lista</button>
@@ -101,36 +161,58 @@
     </main>
   </div>
 
-  <div id="legend" popover>
-    <button class="close-btn" popovertarget="legend" popovertargetaction="hide">
-      <span aria-hidden="true">✕</span>
-      <span class="sr-only">Cerrar</span>
-    </button>
-    <table class="legend-table">
-      <tr>
-        <th>Monitor</th>
-        <th>Resolución</th>
-        <th>Principal</th>
-        <th>Navegador</th>
-      </tr>
-      <tbody id="legendTableBody"></tbody>
-    </table>
-  </div>
+  <dialog
+    id="screensPermissionDialog"
+    class="screens-permission-dialog"
+    aria-labelledby="screensPermissionTitle"
+    aria-describedby="screensPermissionDescription screensPermissionStatus"
+  >
+    <div class="screens-permission-content">
+      <span class="screens-permission-icon" aria-hidden="true">▣</span>
+      <div>
+        <h2 id="screensPermissionTitle">Acceso a monitores requerido</h2>
+        <p id="screensPermissionDescription">
+          Para abrir la pantalla del presentador en el monitor correcto, permite el acceso a los monitores.
+          Presiona el botón y acepta el permiso que mostrará el navegador.
+        </p>
+        <p class="screens-permission-note">
+          Si el navegador no muestra la solicitud, habilita el permiso de monitores en la configuración del sitio.
+        </p>
+        <p id="screensPermissionStatus" class="screens-permission-status" aria-live="assertive"></p>
+      </div>
+    </div>
+    <div class="screens-permission-actions">
+      <button id="screensPermissionBtn" class="screens-permission-btn btn-primary" autofocus>
+        Permitir acceso a los monitores
+      </button>
+    </div>
+  </dialog>
 
   <script type="text/html" id="legendTemplate">
     <% screens.forEach(function forEachScreen(screen) { %>
       <tr>
         <td>
-          <%= screen.index + 1 %>
+          <span class="monitor-id">
+            <span class="monitor-swatch <%= screen.isPrimary ? 'primary-screen' : 'secondary-screen' %>"></span>
+            <strong><%= screen.index + 1 %></strong>
+          </span>
         </td>
         <td>
           <%= screen.availWidth %>x<%= screen.availHeight %>
         </td>
         <td>
-          <%= screen.isPrimary ? 'Sí' : '' %>
-        </td>
-        <td>
-          <%= screen.isBrowserScreen ? 'Sí' : '' %>
+          <%
+            const labels = [{
+              text: screen.isPrimary ? 'Principal' : 'Secundaria',
+              kind: screen.isPrimary ? 'primary' : 'secondary'
+            }];
+            if (screen.isBrowserScreen) {
+              labels.push({ text: 'Navegador', kind: 'browser' });
+            }
+          %>
+          <% labels.forEach(function(label) { %>
+            <span class="monitor-status monitor-status--<%= label.kind %>"><%= label.text %></span>
+          <% }); %>
         </td>
       </tr>
     <% }); %>
@@ -149,22 +231,52 @@
                     <% } %>
               </div>
               <div class="details">
+                  <div class="file-badges">
+                      <span class="media-badge current-badge">En pantalla</span>
+                      <span class="media-badge"><%= mediaKind %></span>
+                      <span class="media-badge file-type-badge"><%= fileType || 'Tipo desconocido' %></span>
+                  </div>
                   <span class="file-name" title="<%= fileName %>"><%= fileName %></span>
                   <p class="file-type"><%= fileType %></p>
               </div>
           </div>
           <div class="action-buttons">
               <div class="file-actions-primary">
-                  <button type="button" class="show-btn btn-primary" aria-label="Mostrar <%= fileName %> ahora">▶ Mostrar</button>
+                  <button
+                    type="button"
+                    class="show-btn btn-primary"
+                    title="Mostrar este archivo en la pantalla del presentador"
+                    aria-label="Mostrar <%= fileName %> en la pantalla del presentador"
+                  >▶ Mostrar</button>
                   <div class="controls">
-                      <button class="delete-btn" aria-label="Eliminar archivo">Eliminar</button>
-                      <button class="duplicate-btn" aria-label="Duplicar archivo">Duplicar</button>
+                      <button
+                        class="duplicate-btn icon-btn small-icon-btn"
+                        title="Duplicar este archivo en la lista"
+                        data-tooltip="Duplicar este archivo en la lista"
+                        aria-label="Duplicar <%= fileName %> en la lista"
+                      >⧉</button>
+                      <button
+                        class="delete-btn icon-btn small-icon-btn"
+                        title="Eliminar este archivo de la lista"
+                        data-tooltip="Eliminar este archivo de la lista"
+                        aria-label="Eliminar <%= fileName %> de la lista"
+                      >✕</button>
                   </div>
               </div>
               <div class="drag-controls">
-                  <button class="move-up" aria-label="Mover hacia arriba">↑</button>
-                  <span class="drag-handle" aria-label="Mover elemento">☰</span>
-                  <button class="move-down" aria-label="Mover hacia abajo">↓</button>
+                  <button
+                    class="move-up icon-btn small-icon-btn"
+                    title="Mover este archivo hacia arriba"
+                    data-tooltip="Mover este archivo hacia arriba"
+                    aria-label="Mover <%= fileName %> hacia arriba"
+                  >↑</button>
+                  <span class="drag-handle" title="Arrastrar este archivo para reordenarlo" aria-label="Arrastrar elemento">☰</span>
+                  <button
+                    class="move-down icon-btn small-icon-btn"
+                    title="Mover este archivo hacia abajo"
+                    data-tooltip="Mover este archivo hacia abajo"
+                    aria-label="Mover <%= fileName %> hacia abajo"
+                  >↓</button>
               </div>
           </div>
       </li>
