@@ -80,6 +80,8 @@ Checklist result:
 Notes / failures:
 ```
 
+For asset-pack-driven media passes, use `test/fixtures/media/public-domain/` as the regression set.
+
 ## Known Limits
 
 - The service worker remains parked and is not registered. Active offline/PWA behavior is post-POC work.
