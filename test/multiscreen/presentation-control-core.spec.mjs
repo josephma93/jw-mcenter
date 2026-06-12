@@ -2,18 +2,7 @@
 import { test, expect } from '../fixtures/window-management.mjs';
 import { collectProblems, expectNoProblems } from '../support/e2e-helpers.mjs';
 import { mediaFixturePath } from '../support/media-fixtures.mjs';
-
-/**
- * @param {import('@playwright/test').Page} presenter
- * @param {'VIDEO' | 'AUDIO' | 'IMG'} tagName
- */
-async function waitForPresenterElement(presenter, tagName) {
-    await presenter.waitForFunction((expectedTagName) => {
-        const element = document.querySelector('#media-container > *');
-        return element?.tagName === expectedTagName;
-    }, tagName);
-    return presenter.locator('#media-container > *');
-}
+import { waitForPresenterElement } from '../support/presenter-helpers.mjs';
 
 /**
  * @param {import('@playwright/test').Page} presenter
