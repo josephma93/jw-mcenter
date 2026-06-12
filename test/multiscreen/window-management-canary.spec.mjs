@@ -10,9 +10,11 @@ test('window-management grant exposes the secondary monitor only', async ({ page
     await expect(page.locator('#screensPermissionBtn')).toBeHidden();
 
     const selectableOptions = page.locator('#monitorSelect option:not([value=""])');
+    const emptyOptions = page.locator('#monitorSelect option[value=""]');
     await expect(selectableOptions).toHaveCount(1);
+    await expect(emptyOptions).toHaveCount(0);
     await expect(selectableOptions.first()).toHaveAttribute('value', '1');
-    await expect(selectableOptions.first()).toHaveText('2');
+    await expect(selectableOptions.first()).toHaveText('Monitor 2 - secundario - 1280x720');
     // The first secondary monitor is auto-selected as the default.
     await expect(page.locator('#monitorSelect')).toHaveValue('1');
 

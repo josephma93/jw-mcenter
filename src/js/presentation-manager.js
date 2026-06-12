@@ -53,6 +53,7 @@ let commandChannels = null;
 /** @type {JQuery<HTMLElement>} */ let $playPauseBtn;
 /** @type {JQuery<HTMLElement>} */ let $playbackTimeDisplay;
 /** @type {JQuery<HTMLElement>} */ let $playbackProgressBar;
+/** @type {JQuery<HTMLElement>} */ let $currentMediaState;
 /** @type {JQuery<HTMLElement>} */ let $currentMediaName;
 /** @type {JQuery<HTMLElement>} */ let $currentMediaMeta;
 /** @type {JQuery<HTMLElement>} */ let $mediaControlHint;
@@ -104,6 +105,69 @@ function resetPlaybackTimeDisplay() {
 }
 
 /**
+ * @returns {string}
+ */
+function selectedMonitorLabel() {
+    if (!selectedMonitor) {
+        return 'Sin pantalla seleccionada';
+    }
+    const monitorRole = selectedMonitor.isPrimary ? 'principal' : 'secundaria';
+    return `Monitor ${selectedMonitor.index + 1} (${monitorRole})`;
+}
+
+/**
+ * @param {File} file
+ * @returns {string}
+ */
+function fileTypeLabel(file) {
+    const subtype = file.type.split('/')[1];
+    if (subtype) {
+        return subtype.toUpperCase();
+    }
+    const extension = file.name.split('.').pop();
+    return extension ? extension.toUpperCase() : 'Tipo desconocido';
+}
+
+/**
+ * @param {string} label
+ * @param {'idle' | 'active' | 'blank'} tone
+ */
+function setCurrentMediaState(label, tone) {
+    $currentMediaState
+        .removeClass('is-active is-blank')
+        .addClass(tone === 'active' ? 'is-active' : '')
+        .addClass(tone === 'blank' ? 'is-blank' : '')
+        .text(label);
+}
+
+/**
+ * @param {import('./file-manager.js').FileItem} item
+ * @returns {string}
+ */
+function inactivePlaylistState(item) {
+    if (item.detected === 'isImage') {
+        return 'Lista para mostrar: imagen sin controles de tiempo.';
+    }
+    return 'Lista para mostrar: tendrá controles de reproducción al presentarse.';
+}
+
+/**
+ * @param {import('./file-manager.js').FileItem} item
+ * @returns {string}
+ */
+function activePlaylistState(item) {
+    if (item.detected === 'isImage') {
+        return 'Imagen en pantalla: reproducción y saltos no aplican.';
+    }
+    if (item.detected === 'isAudio' || item.detected === 'isVideo') {
+        return isPlaying
+            ? 'Reproduciéndose en la pantalla del presentador.'
+            : 'En pantalla; reproducción pausada o esperando al presentador.';
+    }
+    return 'En pantalla del presentador.';
+}
+
+/**
  * @param {{ currentTime?: unknown, duration?: unknown }} payload
  */
 function renderPlaybackTimeUpdate(payload) {
@@ -122,31 +186,43 @@ function renderPlaylistCurrentHighlight() {
         const $item = $(element);
         const item = /** @type {import('./file-manager.js').FileItem | undefined} */ ($item.data('fileItem'));
         const isCurrent = presenterAlive && !!currentItem && item === currentItem;
+        const $showBtn = $item.find('.show-btn');
         $item.toggleClass('file-item--current', isCurrent);
+        if (item) {
+            $item.find('.playlist-item-state').text(isCurrent
+                ? activePlaylistState(item)
+                : inactivePlaylistState(item));
+        }
+        $showBtn
+            .prop('disabled', isCurrent)
+            .text(isCurrent ? 'En pantalla' : '▶ Mostrar');
     });
 }
 
 function renderCurrentMediaSummary() {
     if (!presenterAlive) {
+        setCurrentMediaState('Sin presentación', 'idle');
         $currentMediaName.text('Sin presentación activa');
-        $currentMediaMeta.text('Inicia la presentación o muestra un archivo.');
+        $currentMediaMeta.text(`Destino preparado: ${selectedMonitorLabel()}.`);
         $mediaControlHint.text('Los controles de reproducción se activan cuando hay audio o video en pantalla.');
         return;
     }
 
     if (!currentItem) {
+        setCurrentMediaState('Pantalla en blanco', 'blank');
         $currentMediaName.text('Pantalla en blanco');
-        $currentMediaMeta.text('El presentador no muestra contenido.');
+        $currentMediaMeta.text(`Presentador abierto en ${selectedMonitorLabel()}.`);
         $mediaControlHint.text('Usa Mostrar en la lista para enviar contenido al presentador.');
         return;
     }
 
     const mediaKind = MEDIA_KIND_LABELS[currentItem.detected] ?? 'Archivo';
-    const fileType = currentItem.file.type || 'Tipo desconocido';
+    const fileType = fileTypeLabel(currentItem.file);
     const isTimeBasedMedia = currentItem.detected === 'isVideo' || currentItem.detected === 'isAudio';
 
+    setCurrentMediaState(isPlaying && isTimeBasedMedia ? 'Reproduciendo' : 'En pantalla', 'active');
     $currentMediaName.text(currentItem.file.name);
-    $currentMediaMeta.text(`${mediaKind} - ${fileType}`);
+    $currentMediaMeta.text(`${mediaKind} / ${fileType} - ${selectedMonitorLabel()}`);
     $mediaControlHint.text(isTimeBasedMedia
         ? 'Reproducción, pausa y saltos de 10 segundos aplican a este contenido.'
         : 'Imagen en pantalla: reproducción, pausa y saltos de tiempo no aplican.');
@@ -341,6 +417,7 @@ function initialize(fileManager, screenManager) {
     $playPauseBtn = $('#playPauseBtn');
     $playbackTimeDisplay = $('#playbackTimeDisplay');
     $playbackProgressBar = $('#playbackProgressBar');
+    $currentMediaState = $('#currentMediaState');
     $currentMediaName = $('#currentMediaName');
     $currentMediaMeta = $('#currentMediaMeta');
     $mediaControlHint = $('#mediaControlHint');
@@ -348,6 +425,7 @@ function initialize(fileManager, screenManager) {
 
     screenManager.selectedMonitor$.subscribe(monitor => {
         selectedMonitor = monitor;
+        renderControlState();
     });
 
     interval(PING_INTERVAL_MS)

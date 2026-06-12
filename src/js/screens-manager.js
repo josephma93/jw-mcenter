@@ -34,12 +34,6 @@ import {
 /** @type {BehaviorSubject<RefinedScreen | null>} */
 const selectedMonitorSubject = new BehaviorSubject(/** @type {RefinedScreen | null} */ (null));
 
-/**
- * Set when the user explicitly picks "ninguno"; cleared when the set of
- * available monitors changes, so auto-defaulting can apply again.
- * @type {boolean}
- */
-let userDeclinedAutoSelect = false;
 /** Comma-joined indices of the last seen secondary monitors. @type {string} */
 let lastAvailableMonitorsKey = '';
 
@@ -225,20 +219,34 @@ function initializeMonitorFlyout() {
 
 /** @param {RefinedScreen[]} refinedScreens */
 function renderAvailableMonitorsSelect(refinedScreens) {
-    const currentSelected = $monitorSelect.val();
-    $monitorSelect.find('option').not(':first').remove();
+    const secondaries = refinedScreens.filter(screen => !screen.isBrowserScreen);
+    const currentSelected = selectedMonitorSubject.value
+        ? String(selectedMonitorSubject.value.index)
+        : String($monitorSelect.val() || '');
 
-    refinedScreens.forEach(scr => {
-        if (!scr.isBrowserScreen) {
-            const value = scr.index;
-            const option = $('<option>')
-                .val(value)
-                .text(scr.index + 1);
-            if (value.toString() === currentSelected) {
-                option.attr('selected', 'selected');
-            }
-            $monitorSelect.append(option);
+    $monitorSelect.empty();
+
+    if (secondaries.length === 0) {
+        $monitorSelect.append(
+            $('<option>')
+                .val('')
+                .text('No hay pantalla disponible')
+                .prop('disabled', true)
+                .prop('selected', true)
+        );
+        return;
+    }
+
+    secondaries.forEach(scr => {
+        const value = scr.index;
+        const role = scr.isPrimary ? 'principal' : 'secundario';
+        const option = $('<option>')
+            .val(value)
+            .text(`Monitor ${scr.index + 1} - ${role} - ${scr.availWidth}x${scr.availHeight}`);
+        if (value.toString() === currentSelected) {
+            option.attr('selected', 'selected');
         }
+        $monitorSelect.append(option);
     });
 }
 
@@ -254,8 +262,7 @@ const availableScreensData$ = interval(REFRESH_INTERVAL_MS)
 /**
  * Defaults the selection to the first secondary (non-browser) monitor
  * whenever possible: on startup, when monitors are (re)connected, and when
- * the selected monitor disappears. An explicit "ninguno" choice is respected
- * until the set of available monitors changes.
+ * the selected monitor disappears.
  * @param {RefinedScreen[]} refinedScreens
  */
 function autoSelectDefaultMonitor(refinedScreens) {
@@ -263,7 +270,6 @@ function autoSelectDefaultMonitor(refinedScreens) {
     const availableKey = secondaries.map(screen => screen.index).join(',');
     if (availableKey !== lastAvailableMonitorsKey) {
         lastAvailableMonitorsKey = availableKey;
-        userDeclinedAutoSelect = false;
     }
 
     const current = selectedMonitorSubject.value;
@@ -278,7 +284,15 @@ function autoSelectDefaultMonitor(refinedScreens) {
         }
     }
 
-    if (selectedMonitorSubject.value || userDeclinedAutoSelect || secondaries.length === 0) {
+    if (secondaries.length === 0) {
+        if (selectedMonitorSubject.value !== null) {
+            selectedMonitorSubject.next(null);
+        }
+        $monitorSelect.val('');
+        return;
+    }
+
+    if (selectedMonitorSubject.value) {
         return;
     }
     const defaultMonitor = secondaries[0];
@@ -309,7 +323,6 @@ function startScreensStream() {
             }),
         )
         .subscribe(selectedMonitor => {
-            userDeclinedAutoSelect = selectedMonitor === null;
             selectedMonitorSubject.next(selectedMonitor);
         });
 }

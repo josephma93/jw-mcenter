@@ -54,80 +54,85 @@
     </header>
     <main class="main">
       <section class="presentation-controls card">
-        <div class="section-header presentation-header">
-          <h2><span class="section-icon" aria-hidden="true">#</span> Control Maestro</h2>
+        <div class="presentation-primary-row">
+          <div class="presentation-title">
+            <h2><span class="section-icon" aria-hidden="true">#</span> Control Maestro</h2>
+            <span>Sesión y controles de presentación</span>
+          </div>
+          <div class="monitor-picker">
+            <label for="monitorSelect">Abrir presentador en</label>
+            <select id="monitorSelect">
+              <option value="">Sin pantalla seleccionada</option>
+            </select>
+          </div>
           <div class="session-actions">
             <button id="startPresentationBtn" class="btn-primary">Iniciar presentación</button>
             <button id="endPresentationBtn" class="btn-danger">Terminar presentación</button>
           </div>
         </div>
-        <div class="presentation-setup">
-          <div class="monitor-picker">
-            <label for="monitorSelect">Pantalla del presentador</label>
-            <select id="monitorSelect">
-              <option value="">Sin pantalla seleccionada</option>
-            </select>
-          </div>
-        </div>
-        <div class="now-playing-panel">
+        <div class="presentation-runtime-row">
           <div class="now-playing-copy">
-            <span class="now-playing-label">Contenido actual</span>
+            <span id="currentMediaState" class="now-playing-state">Sin presentación</span>
             <strong id="currentMediaName">Sin presentación activa</strong>
             <span id="currentMediaMeta">Inicia la presentación o muestra un archivo.</span>
           </div>
-          <output id="playbackTimeDisplay" aria-live="polite">--:-- / --:--</output>
-        </div>
-        <div class="playback-progress" aria-hidden="true">
-          <span id="playbackProgressBar"></span>
+          <div class="runtime-transport">
+            <div class="runtime-progress">
+              <output id="playbackTimeDisplay" aria-live="polite">--:-- / --:--</output>
+              <div class="playback-progress" aria-hidden="true">
+                <span id="playbackProgressBar"></span>
+              </div>
+            </div>
+            <div class="control-toolbar" aria-label="Controles de presentación">
+              <button
+                id="prevMediaBtn"
+                class="icon-btn"
+                title="Mostrar archivo anterior"
+                data-tooltip="Mostrar archivo anterior"
+                aria-label="Mostrar archivo anterior"
+              >⏮</button>
+              <button
+                id="rewindBtn"
+                class="icon-btn"
+                title="Retroceder 10 segundos"
+                data-tooltip="Retroceder 10 segundos"
+                aria-label="Retroceder 10 segundos"
+              >⏪</button>
+              <button
+                id="playPauseBtn"
+                class="icon-btn btn-play-pause"
+                title="Reproducir contenido actual"
+                data-tooltip="Reproducir contenido actual"
+                aria-label="Reproducir contenido actual"
+              >▶️</button>
+              <button
+                id="fastForwardBtn"
+                class="icon-btn"
+                title="Avanzar 10 segundos"
+                data-tooltip="Avanzar 10 segundos"
+                aria-label="Avanzar 10 segundos"
+              >⏩</button>
+              <button
+                id="nextMediaBtn"
+                class="icon-btn"
+                title="Mostrar archivo siguiente"
+                data-tooltip="Mostrar archivo siguiente"
+                aria-label="Mostrar archivo siguiente"
+              >⏭</button>
+              <span class="toolbar-separator" aria-hidden="true"></span>
+              <button
+                id="blankScreenBtn"
+                class="icon-btn blank-screen-btn"
+                title="Mostrar pantalla en blanco"
+                data-tooltip="Mostrar pantalla en blanco"
+                aria-label="Mostrar pantalla en blanco"
+              >□</button>
+            </div>
+          </div>
         </div>
         <p id="mediaControlHint" class="media-control-hint">
           Los controles de reproducción se activan cuando hay audio o video en pantalla.
         </p>
-        <div class="control-toolbar" aria-label="Controles de presentación">
-          <button
-            id="prevMediaBtn"
-            class="icon-btn"
-            title="Mostrar archivo anterior"
-            data-tooltip="Mostrar archivo anterior"
-            aria-label="Mostrar archivo anterior"
-          >⏮</button>
-          <button
-            id="rewindBtn"
-            class="icon-btn"
-            title="Retroceder 10 segundos"
-            data-tooltip="Retroceder 10 segundos"
-            aria-label="Retroceder 10 segundos"
-          >⏪</button>
-          <button
-            id="playPauseBtn"
-            class="icon-btn btn-play-pause"
-            title="Reproducir contenido actual"
-            data-tooltip="Reproducir contenido actual"
-            aria-label="Reproducir contenido actual"
-          >▶️</button>
-          <button
-            id="fastForwardBtn"
-            class="icon-btn"
-            title="Avanzar 10 segundos"
-            data-tooltip="Avanzar 10 segundos"
-            aria-label="Avanzar 10 segundos"
-          >⏩</button>
-          <button
-            id="nextMediaBtn"
-            class="icon-btn"
-            title="Mostrar archivo siguiente"
-            data-tooltip="Mostrar archivo siguiente"
-            aria-label="Mostrar archivo siguiente"
-          >⏭</button>
-          <span class="toolbar-separator" aria-hidden="true"></span>
-          <button
-            id="blankScreenBtn"
-            class="icon-btn blank-screen-btn"
-            title="Mostrar pantalla en blanco"
-            data-tooltip="Mostrar pantalla en blanco"
-            aria-label="Mostrar pantalla en blanco"
-          >□</button>
-        </div>
       </section>
 
       <section class="media-list">
@@ -219,7 +224,7 @@
   </script>
 
   <script type="text/html" id="fileItemTemplate">
-      <li class="file-item">
+      <li class="file-item file-item--<%= mediaKindClass %>">
           <div class="file-info">
               <div class="preview-container">
                     <% if (isImage) { %>
@@ -233,11 +238,16 @@
               <div class="details">
                   <div class="file-badges">
                       <span class="media-badge current-badge">En pantalla</span>
-                      <span class="media-badge"><%= mediaKind %></span>
-                      <span class="media-badge file-type-badge"><%= fileType || 'Tipo desconocido' %></span>
+                      <span class="media-badge media-kind-badge"><%= mediaKind %></span>
+                      <span class="media-badge file-type-badge"><%= fileTypeLabel %></span>
+                      <% if (!isTimelineMedia) { %>
+                        <span class="media-badge timeline-badge">Sin tiempo</span>
+                      <% } %>
                   </div>
                   <span class="file-name" title="<%= fileName %>"><%= fileName %></span>
-                  <p class="file-type"><%= fileType %></p>
+                  <p class="file-type">
+                    <span class="playlist-item-state">Listo para mostrar</span>
+                  </p>
               </div>
           </div>
           <div class="action-buttons">

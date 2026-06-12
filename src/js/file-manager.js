@@ -232,6 +232,29 @@ function mediaKindLabel(detected) {
 }
 
 /**
+ * @param {DetectedMediaType} detected
+ * @returns {'image' | 'video' | 'audio'}
+ */
+function mediaKindClass(detected) {
+    if (detected === IS_IMAGE) return 'image';
+    if (detected === IS_VIDEO) return 'video';
+    return 'audio';
+}
+
+/**
+ * @param {File} file
+ * @returns {string}
+ */
+function fileTypeLabel(file) {
+    const subtype = file.type.split('/')[1];
+    if (subtype) {
+        return subtype.toUpperCase();
+    }
+    const extension = file.name.split('.').pop();
+    return extension ? extension.toUpperCase() : 'Tipo desconocido';
+}
+
+/**
  * @param {File} file
  * @returns {DetectedMediaType | ''} Empty string when the browser can't play it.
  */
@@ -260,8 +283,11 @@ function handleFileListStateChange(newState) {
         const compiledHTML = ejs.render(fileItemHTML, {
             blobURL: blobURL,
             fileType: item.file.type,
+            fileTypeLabel: fileTypeLabel(item.file),
             fileName: item.file.name,
             mediaKind: mediaKindLabel(item.detected),
+            mediaKindClass: mediaKindClass(item.detected),
+            isTimelineMedia: item.detected === IS_VIDEO || item.detected === IS_AUDIO,
             [IS_IMAGE]: false,
             [IS_VIDEO]: false,
             [IS_AUDIO]: false,

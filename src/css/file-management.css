@@ -108,15 +108,17 @@
 }
 
 .file-item {
+    position: relative;
     background: var(--surface);
     border: 0;
     border-bottom: 1px solid var(--border);
     border-radius: 0;
-    padding: 14px 16px;
-    display: flex;
-    justify-content: space-between;
+    padding: 16px 16px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 16px;
+    gap: 18px;
+    min-height: 112px;
     box-shadow: none;
     transition: background-color 0.2s ease;
 }
@@ -126,9 +128,9 @@
 }
 
 .file-item--current {
-    border-left: 4px solid var(--primary);
+    border-left: 5px solid var(--primary);
     background: #f0faf2;
-    padding-left: 12px;
+    padding-left: 11px;
 }
 
 .sortable-placeholder {
@@ -148,16 +150,20 @@
 }
 
 .preview-container {
-    margin-right: 14px;
     flex: none;
+    margin-right: 16px;
 }
 
 .preview {
-    width: 112px;
-    height: 70px;
+    width: 126px;
+    height: 74px;
     object-fit: cover;
     border-radius: 5px;
     border: 1px solid var(--border);
+}
+
+.file-item--current .preview {
+    border: 2px solid var(--primary);
 }
 
 .preview-audio {
@@ -178,8 +184,8 @@
 .file-badges {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
-    margin-bottom: 5px;
+    gap: 6px;
+    margin-bottom: 6px;
 }
 
 .media-badge {
@@ -208,15 +214,44 @@
 
 .file-name {
     display: block;
-    font-weight: 500;
+    font-size: 1.02rem;
+    font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
+.file-item--current .file-name {
+    color: var(--primary-dark);
+}
+
 .file-type {
     margin: 2px 0 0;
     font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.media-kind-badge {
+    background: #eef1f4;
+}
+
+.file-item--video .media-kind-badge {
+    background: #eef2ff;
+    color: #3730a3;
+}
+
+.file-item--audio .media-kind-badge {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.file-item--image .media-kind-badge {
+    background: #ecfeff;
+    color: #0e7490;
+}
+
+.timeline-badge {
+    background: #eef1f4;
     color: var(--text-muted);
 }
 
@@ -226,6 +261,7 @@
     gap: 10px;
     align-items: center;
     flex: none;
+    padding-right: 0;
 }
 
 .file-actions-primary {
@@ -282,4 +318,20 @@
 #errorDialog ul {
     padding-left: 20px;
     margin: 0;
+}
+
+@media (max-width: 760px) {
+    .file-item {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: stretch;
+    }
+
+    .file-info {
+        align-items: flex-start;
+    }
+
+    .action-buttons {
+        justify-content: flex-start;
+        padding-right: 0;
+    }
 }

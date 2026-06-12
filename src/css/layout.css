@@ -15,6 +15,8 @@
     --primary-dark: #218838;
     --danger: #dc3545;
     --danger-dark: #c82333;
+    --primary-soft: #eaf8ee;
+    --danger-soft: #fff1f2;
     --radius: 8px;
 }
 
@@ -246,24 +248,6 @@ select {
     gap: 8px;
 }
 
-.monitor-picker {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: min(100%, 520px);
-}
-
-.monitor-picker label {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.monitor-picker select {
-    flex: 1;
-    min-width: 240px;
-}
-
 .monitor-canvas {
     display: flex;
     flex-direction: column;
@@ -274,15 +258,62 @@ select {
 
 .presentation-controls {
     grid-area: controls;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
+    padding: 12px 16px;
 }
 
-.presentation-header {
+.presentation-primary-row {
+    display: grid;
+    grid-template-columns: minmax(170px, auto) minmax(260px, 1fr) auto;
     align-items: center;
+    gap: 14px;
+}
+
+.presentation-title {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.presentation-title h2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.presentation-title span {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.monitor-picker {
+    display: grid;
+    grid-template-columns: auto minmax(180px, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-muted);
+}
+
+.monitor-picker label {
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.monitor-picker select {
+    min-width: 0;
+    width: 100%;
+    background: var(--surface);
+    font-weight: 600;
 }
 
 .session-actions {
@@ -292,43 +323,61 @@ select {
     gap: 8px;
 }
 
-.presentation-setup {
-    display: flex;
+.presentation-runtime-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(480px, auto);
     align-items: center;
-    justify-content: flex-start;
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface-muted);
-}
-
-.now-playing-panel {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
+    gap: 14px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
     min-width: 0;
 }
 
 .now-playing-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+        "state name"
+        "state meta";
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 2px;
     min-width: 0;
 }
 
-.now-playing-label {
-    color: var(--primary-dark);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
+.now-playing-state {
+    grid-area: state;
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    flex: none;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
     text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.now-playing-state.is-active {
+    background: var(--primary-soft);
+    color: #166534;
+}
+
+.now-playing-state.is-blank {
+    background: var(--surface-muted);
+    color: var(--text-muted);
 }
 
 #currentMediaName {
+    grid-area: name;
     overflow: hidden;
     color: var(--text);
-    font-size: 1rem;
+    font-size: 0.92rem;
+    font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -339,8 +388,17 @@ select {
     font-size: 0.84rem;
 }
 
+#currentMediaMeta {
+    grid-area: meta;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .media-control-hint {
     margin: 0;
+    color: var(--text-muted);
+    font-size: 0.82rem;
 }
 
 .playback-progress {
@@ -359,13 +417,33 @@ select {
     transition: width 0.12s linear;
 }
 
+.runtime-transport {
+    display: grid;
+    grid-template-columns: minmax(170px, 280px) auto;
+    align-items: center;
+    justify-content: end;
+    gap: 14px;
+    min-width: 0;
+}
+
+.runtime-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.runtime-progress .playback-progress {
+    flex: 1;
+    min-width: 90px;
+}
+
 .control-toolbar {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding-top: 2px;
 }
 
 .toolbar-separator {
@@ -376,7 +454,14 @@ select {
 }
 
 .blank-screen-btn {
-    color: var(--text);
+    border-color: #f4b8c1;
+    background: var(--danger-soft);
+    color: #9f1239;
+}
+
+.blank-screen-btn:hover:enabled {
+    border-color: #f08c9a;
+    background: #ffe4e8;
 }
 
 @media (max-width: 900px) {
@@ -410,29 +495,49 @@ select {
     }
 
     .section-header,
-    .now-playing-panel {
+    .presentation-primary-row,
+    .presentation-runtime-row,
+    .runtime-transport {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .section-header {
         flex-direction: column;
         align-items: stretch;
     }
 
     .monitor-picker {
-        flex-direction: column;
-        align-items: stretch;
-        min-width: 0;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .session-actions {
         justify-content: flex-start;
+    }
+
+    .now-playing-copy {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "state"
+            "name"
+            "meta";
+    }
+
+    .runtime-transport {
+        justify-content: stretch;
+    }
+
+    .control-toolbar {
+        flex-wrap: wrap;
     }
 }
 
 #playbackTimeDisplay {
     font-variant-numeric: tabular-nums;
     color: var(--text);
-    font-size: clamp(1.4rem, 4vw, 2rem);
+    font-size: 1.1rem;
     font-weight: 700;
     line-height: 1;
-    min-width: 170px;
+    min-width: 110px;
     text-align: right;
 }
 
