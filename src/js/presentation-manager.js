@@ -13,9 +13,10 @@ import {
     stepCurrentItem,
     toUpdateMediaPayload,
 } from './presentation-state.mjs';
-import { interval, filter } from 'rxjs';
+import { interval } from 'rxjs';
 
 const PING_INTERVAL_MS = 2000;
+const PLAYBACK_TIME_IDLE_TEXT = '--:-- / --:--';
 
 /** @type {Window | null} */
 let presentationWindow = null;
@@ -27,6 +28,8 @@ let currentItem = null;
 let previousCurrentIndex = 0;
 /** @type {boolean} */
 let isPlaying = true;
+/** @type {boolean} */
+let presenterAlive = false;
 /** @type {ReturnType<typeof initSharedWorkerRxBridge> | null} */
 let commandChannels = null;
 /** @type {JQuery<HTMLElement>} */ let $startPresentationBtn;
@@ -36,16 +39,80 @@ let commandChannels = null;
 /** @type {JQuery<HTMLElement>} */ let $rewindBtn;
 /** @type {JQuery<HTMLElement>} */ let $fastForwardBtn;
 /** @type {JQuery<HTMLElement>} */ let $playPauseBtn;
+/** @type {JQuery<HTMLElement>} */ let $playbackTimeDisplay;
 
 function isPresenterOpen() {
     return presentationWindow !== null && !presentationWindow.closed;
 }
 
+/**
+ * @param {number} totalSeconds
+ * @returns {string}
+ */
+function formatPlaybackTime(totalSeconds) {
+    if (!Number.isFinite(totalSeconds) || totalSeconds < 0) {
+        return '--:--';
+    }
+
+    const roundedSeconds = Math.floor(totalSeconds);
+    const hours = Math.floor(roundedSeconds / 3600);
+    const minutes = Math.floor((roundedSeconds % 3600) / 60);
+    const seconds = roundedSeconds % 60;
+
+    if (hours > 0) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+/**
+ * @param {string} value
+ */
+function setPlaybackTimeDisplay(value) {
+    $playbackTimeDisplay.text(value);
+}
+
+function resetPlaybackTimeDisplay() {
+    setPlaybackTimeDisplay(PLAYBACK_TIME_IDLE_TEXT);
+}
+
+/**
+ * @param {{ currentTime?: unknown, duration?: unknown }} payload
+ */
+function renderPlaybackTimeUpdate(payload) {
+    setPlaybackTimeDisplay(
+        `${formatPlaybackTime(Number(payload.currentTime))} / ${formatPlaybackTime(Number(payload.duration))}`
+    );
+}
+
 function renderControlState() {
-    const presenterOpen = isPresenterOpen();
-    $startPresentationBtn.prop('disabled', presenterOpen);
-    $endPresentationBtn.prop('disabled', !presenterOpen);
+    const controlsDisabled = !presenterAlive;
+    $startPresentationBtn.prop('disabled', presenterAlive);
+    $endPresentationBtn.prop('disabled', controlsDisabled);
+    $prevMediaBtn.prop('disabled', controlsDisabled);
+    $nextMediaBtn.prop('disabled', controlsDisabled);
+    $rewindBtn.prop('disabled', controlsDisabled);
+    $fastForwardBtn.prop('disabled', controlsDisabled);
+    $playPauseBtn.prop('disabled', controlsDisabled);
     $playPauseBtn.text(isPlaying ? '⏸️' : '▶️');
+}
+
+/**
+ * @param {boolean} nextAlive
+ */
+function setPresenterAlive(nextAlive) {
+    if (presenterAlive === nextAlive) {
+        return;
+    }
+
+    presenterAlive = nextAlive;
+    if (!presenterAlive) {
+        resetLocalState();
+        return;
+    }
+
+    renderControlState();
 }
 
 function resetLocalState() {
@@ -53,6 +120,8 @@ function resetLocalState() {
     currentItem = null;
     previousCurrentIndex = 0;
     isPlaying = true;
+    presenterAlive = false;
+    resetPlaybackTimeDisplay();
     renderControlState();
 }
 
@@ -62,6 +131,9 @@ function sendCurrentMediaUpdate() {
     }
     isPlaying = true;
     commandChannels.updateMediaChannel.send.next(toUpdateMediaPayload(currentItem));
+    if (currentItem.detected === 'isImage') {
+        resetPlaybackTimeDisplay();
+    }
     renderControlState();
 }
 
@@ -95,8 +167,8 @@ function openPresentationWindow() {
         resetLocalState();
         return;
     }
+    setPresenterAlive(true);
     sendCurrentMediaUpdate();
-    renderControlState();
 }
 
 /** @type {import('./file-manager.js')['default'] | null} */
@@ -106,7 +178,7 @@ function closePresentationWindow() {
     if (isPresenterOpen()) {
         presentationWindow?.close();
     }
-    resetLocalState();
+    setPresenterAlive(false);
 }
 
 /**
@@ -149,31 +221,30 @@ function initialize(fileManager, screenManager) {
     $rewindBtn = $('#rewindBtn');
     $fastForwardBtn = $('#fastForwardBtn');
     $playPauseBtn = $('#playPauseBtn');
+    $playbackTimeDisplay = $('#playbackTimeDisplay');
 
     screenManager.selectedMonitor$.subscribe(monitor => {
         selectedMonitor = monitor;
     });
 
     interval(PING_INTERVAL_MS)
-        .pipe(filter(() => presentationWindow !== null && !presentationWindow.closed))
         .subscribe(() => {
-            channels.pingChannel.send.next({ timestamp: Date.now() });
-        });
-
-    interval(PING_INTERVAL_MS)
-        .subscribe(() => {
-            if (presentationWindow !== null && presentationWindow.closed) {
-                resetLocalState();
-            } else {
-                renderControlState();
+            const alive = isPresenterOpen();
+            setPresenterAlive(alive);
+            if (alive) {
+                channels.pingChannel.send.next({ timestamp: Date.now() });
             }
         });
+
+    channels.mediaTimeUpdateChannel.on.subscribe(/** @param {{ currentTime?: unknown, duration?: unknown }} payload */ (payload) => {
+        renderPlaybackTimeUpdate(payload);
+    });
 
     fileManager.filesState$.subscribe(files => {
         const priorIndex = currentItem ? files.indexOf(currentItem) : previousCurrentIndex;
         currentItem = resolveCurrentItem(files, currentItem, previousCurrentIndex);
         previousCurrentIndex = currentItem ? files.indexOf(currentItem) : Math.max(priorIndex, 0);
-        if (isPresenterOpen()) {
+        if (presenterAlive) {
             sendCurrentMediaUpdate();
         }
     });
@@ -185,6 +256,7 @@ function initialize(fileManager, screenManager) {
     $rewindBtn.on('click', () => channels.rewindChannel.send.next({ seconds: 10 }));
     $fastForwardBtn.on('click', () => channels.fastForwardChannel.send.next({ seconds: 10 }));
     $playPauseBtn.on('click', togglePlayPause);
+    resetPlaybackTimeDisplay();
     renderControlState();
 }
 

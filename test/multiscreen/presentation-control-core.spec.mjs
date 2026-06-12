@@ -4,6 +4,28 @@ import { collectProblems, expectNoProblems } from '../support/e2e-helpers.mjs';
 import { mediaFixturePath } from '../support/media-fixtures.mjs';
 import { waitForPresenterElement } from '../support/presenter-helpers.mjs';
 
+/**
+ * @param {import('@playwright/test').Page} presenter
+ */
+async function waitForAnyPresenterElement(presenter) {
+    await presenter.waitForFunction(() => {
+        return document.querySelector('#media-container > *') !== null;
+    });
+    return presenter.locator('#media-container > *');
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ */
+async function expectTimeDisplayToAdvance(page) {
+    const playbackTimeDisplay = page.locator('#playbackTimeDisplay');
+    await expect(playbackTimeDisplay).not.toHaveText('--:-- / --:--');
+    const initialValue = await playbackTimeDisplay.textContent();
+    await expect
+        .poll(async () => page.locator('#playbackTimeDisplay').textContent())
+        .not.toBe(initialValue);
+}
+
 test('control panel drives video, audio, image, and presenter lifecycle on secondary screen', async ({
     pageWithWindowManagement: page,
 }) => {
@@ -30,6 +52,13 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
 
     await page.locator('#monitorSelect').selectOption('1');
 
+    await expect(page.locator('#endPresentationBtn')).toBeDisabled();
+    await expect(page.locator('#prevMediaBtn')).toBeDisabled();
+    await expect(page.locator('#nextMediaBtn')).toBeDisabled();
+    await expect(page.locator('#rewindBtn')).toBeDisabled();
+    await expect(page.locator('#fastForwardBtn')).toBeDisabled();
+    await expect(page.locator('#playPauseBtn')).toBeDisabled();
+
     const popupPromise = page.context().waitForEvent('page');
     await page.locator('#startPresentationBtn').click();
     const presenter = await popupPromise;
@@ -38,6 +67,11 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
 
     await expect(page.locator('#startPresentationBtn')).toBeDisabled();
     await expect(page.locator('#endPresentationBtn')).toBeEnabled();
+    await expect(page.locator('#prevMediaBtn')).toBeEnabled();
+    await expect(page.locator('#nextMediaBtn')).toBeEnabled();
+    await expect(page.locator('#rewindBtn')).toBeEnabled();
+    await expect(page.locator('#fastForwardBtn')).toBeEnabled();
+    await expect(page.locator('#playPauseBtn')).toBeEnabled();
     expect(await presenter.evaluate(() => window.screenX)).toBeGreaterThanOrEqual(1920);
 
     await waitForPresenterElement(presenter, 'VIDEO');
@@ -45,6 +79,7 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
         const video = document.querySelector('#media-container > video');
         return video instanceof HTMLVideoElement && video.currentTime > 0.2;
     });
+    await expectTimeDisplayToAdvance(page);
 
     await page.locator('#playPauseBtn').click();
     await presenter.waitForFunction(() => {
@@ -127,12 +162,63 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
         const image = document.querySelector('#media-container > img');
         return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
     });
+    await expect(page.locator('#playbackTimeDisplay')).toHaveText('--:-- / --:--');
 
-    const closePromise = presenter.waitForEvent('close');
+    const presenterManualClose = presenter.waitForEvent('close');
+    await presenter.close();
+    await presenterManualClose;
+    await expect(page.locator('#startPresentationBtn')).toBeEnabled({ timeout: 3000 });
+    await expect(page.locator('#endPresentationBtn')).toBeDisabled({ timeout: 3000 });
+    await expect(page.locator('#prevMediaBtn')).toBeDisabled({ timeout: 3000 });
+    await expect(page.locator('#nextMediaBtn')).toBeDisabled({ timeout: 3000 });
+    await expect(page.locator('#rewindBtn')).toBeDisabled({ timeout: 3000 });
+    await expect(page.locator('#fastForwardBtn')).toBeDisabled({ timeout: 3000 });
+    await expect(page.locator('#playPauseBtn')).toBeDisabled({ timeout: 3000 });
+
+    const reopenPromise = page.context().waitForEvent('page');
+    await page.locator('#startPresentationBtn').click();
+    const reopenedPresenter = await reopenPromise;
+    const reopenedPresenterProblems = collectProblems(reopenedPresenter);
+    await reopenedPresenter.waitForLoadState('domcontentloaded');
+    await waitForAnyPresenterElement(reopenedPresenter);
+
+    const closePromise = reopenedPresenter.waitForEvent('close');
     await page.locator('#endPresentationBtn').click();
     await closePromise;
     await expect(page.locator('#startPresentationBtn')).toBeEnabled();
+    await expect(page.locator('#playbackTimeDisplay')).toHaveText('--:-- / --:--');
 
+    expectNoProblems(controlProblems);
+    expectNoProblems(presenterProblems);
+    expectNoProblems(reopenedPresenterProblems);
+});
+
+test('closing the control panel makes the presenter self-close within 8 seconds @slow', async ({
+    pageWithWindowManagement: page,
+}) => {
+    const controlProblems = collectProblems(page);
+
+    await page.goto('/');
+    await page.locator('#fileInput').setInputFiles([mediaFixturePath('mp4')]);
+    await page.locator('#monitorSelect').selectOption('1');
+
+    const popupPromise = page.context().waitForEvent('page');
+    await page.locator('#startPresentationBtn').click();
+    const presenter = await popupPromise;
+    const presenterProblems = collectProblems(presenter);
+    await presenter.waitForLoadState('domcontentloaded');
+    await waitForPresenterElement(presenter, 'VIDEO');
+    await presenter.waitForFunction(() => {
+        const video = document.querySelector('#media-container > video');
+        return video instanceof HTMLVideoElement && video.currentTime > 0.2;
+    });
+
+    const closePromise = presenter.waitForEvent('close', { timeout: 8000 });
+    const closeStartedAt = Date.now();
+    await page.close();
+    await closePromise;
+
+    expect(Date.now() - closeStartedAt).toBeLessThan(8000);
     expectNoProblems(controlProblems);
     expectNoProblems(presenterProblems);
 });
