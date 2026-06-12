@@ -11,14 +11,15 @@ import {
 test('control panel boots with permission-denied flow isolated to smoke', async ({ page }) => {
     const problems = collectProblems(page);
     await page.goto('/');
-    await expect(page.locator('#startPresentationBtn')).toBeVisible();
-    await expect(page.locator('#emptyState')).toBeVisible();
-    await expect(page.locator('#screensPermissionDialog')).toBeVisible();
-    await expect(page.locator('#screensPermissionBtn')).toBeVisible();
-    await expect(page.locator('#screensPermissionBtn')).toBeFocused();
+    await expect(page.getByTestId('page:control-panel')).toBeVisible();
+    await expect(page.getByTestId('action:start-presentation')).toBeVisible();
+    await expect(page.getByTestId('state:empty-results')).toBeVisible();
+    await expect(page.getByTestId('screens-permission-dialog')).toBeVisible();
+    await expect(page.getByTestId('action:grant-screens-permission')).toBeVisible();
+    await expect(page.getByTestId('action:grant-screens-permission')).toBeFocused();
 
-    await page.locator('#screensPermissionBtn').click();
-    await expect(page.locator('#screensPermissionStatus')).toContainText('No se pudo obtener acceso');
+    await page.getByTestId('action:grant-screens-permission').click();
+    await expect(page.getByTestId('state:screens-permission-status')).toContainText('No se pudo obtener acceso');
     await flushFrames(page);
 
     expectNoProblems(problems, EXPECTED_PERMISSION_NOISE);
@@ -27,16 +28,17 @@ test('control panel boots with permission-denied flow isolated to smoke', async 
 test('adding a deterministic fixture renders it in the playlist', async ({ page }) => {
     const problems = collectProblems(page);
     await page.goto('/');
-    await page.locator('#fileInput').setInputFiles(mediaFixturePath('smallPng'));
-    await expect(page.locator('.file-item')).toHaveCount(1);
-    await expect(page.locator('.file-item .file-name')).toHaveText('small.png');
+    await page.getByTestId('field:files').setInputFiles(mediaFixturePath('smallPng'));
+    await expect(page.getByTestId('files-list-item')).toHaveCount(1);
+    await expect(page.getByTestId('files-list-item-name')).toHaveText('small.png');
     expectNoProblems(problems, EXPECTED_PERMISSION_NOISE);
 });
 
 test('presentation window boots with no errors', async ({ page }) => {
     const problems = collectProblems(page);
     await page.goto('/presentation.html');
-    await expect(page.locator('#fullscreen-overlay')).toBeVisible();
+    await expect(page.getByTestId('page:presenter')).toBeVisible();
+    await expect(page.getByTestId('state:fullscreen-prompt')).toBeVisible();
     await flushFrames(page);
     expectNoProblems(problems);
 });

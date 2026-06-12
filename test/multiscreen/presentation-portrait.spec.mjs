@@ -10,11 +10,11 @@ test('portrait image stays contained within the presenter viewport', async ({
     const controlProblems = collectProblems(page);
 
     await page.goto('/');
-    await page.locator('#fileInput').setInputFiles([mediaFixturePath('portraitPng')]);
-    await page.locator('#monitorSelect').selectOption('1');
+    await page.getByTestId('field:files').setInputFiles([mediaFixturePath('portraitPng')]);
+    await page.getByTestId('field:monitor').selectOption('1');
 
     const popupPromise = page.context().waitForEvent('page');
-    await page.locator('#startPresentationBtn').click();
+    await page.getByTestId('action:start-presentation').click();
     const presenter = await popupPromise;
     const presenterProblems = collectProblems(presenter);
     await presenter.waitForLoadState('domcontentloaded');

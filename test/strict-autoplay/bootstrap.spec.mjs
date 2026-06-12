@@ -5,9 +5,9 @@ import { collectProblems, expectNoProblems, flushFrames } from '../support/e2e-h
 test('control panel boots before any autoplay-dependent interaction', async ({ page }) => {
     const problems = collectProblems(page);
     await page.goto('/');
-    await expect(page.locator('#startPresentationBtn')).toBeVisible();
-    await expect(page.locator('#screensPermissionDialog')).toBeVisible();
-    await expect(page.locator('#screensPermissionBtn')).toBeFocused();
+    await expect(page.getByTestId('action:start-presentation')).toBeVisible();
+    await expect(page.getByTestId('screens-permission-dialog')).toBeVisible();
+    await expect(page.getByTestId('action:grant-screens-permission')).toBeFocused();
     await flushFrames(page);
     expectNoProblems(problems);
 });

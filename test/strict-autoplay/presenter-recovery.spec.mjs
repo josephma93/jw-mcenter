@@ -28,17 +28,17 @@ test('presenter recovers from strict autoplay blocking after overlay click', asy
     });
 
     await page.goto('/');
-    await page.locator('#fileInput').setInputFiles([mediaFixturePath('mp4')]);
-    await page.locator('#monitorSelect').selectOption('1');
+    await page.getByTestId('field:files').setInputFiles([mediaFixturePath('mp4')]);
+    await page.getByTestId('field:monitor').selectOption('1');
 
     const popupPromise = context.waitForEvent('page');
-    await page.locator('#startPresentationBtn').click();
+    await page.getByTestId('action:start-presentation').click();
     const presenter = await popupPromise;
     const presenterProblems = collectProblems(presenter);
     await presenter.waitForLoadState('domcontentloaded');
 
     await waitForPresenterElement(presenter, 'VIDEO');
-    await expect(presenter.locator('#statusMessage')).toContainText('haz clic en la ventana de presentación');
+    await expect(presenter.getByTestId('state:presenter-status')).toContainText('haz clic en la ventana de presentación');
 
     const blockedSample = await presenter.evaluate(async () => {
         const video = document.querySelector('#media-container > video');
@@ -58,19 +58,19 @@ test('presenter recovers from strict autoplay blocking after overlay click', asy
     expect(blockedSample.paused).toBe(true);
     expect(blockedSample.delta).toBeLessThan(0.02);
 
-    await presenter.locator('#fullscreen-overlay').click({ force: true });
+    await presenter.getByTestId('state:fullscreen-prompt').click({ force: true });
     await presenter.waitForFunction(() => Boolean(document.fullscreenElement));
-    await expect(presenter.locator('#fullscreen-overlay')).toBeHidden();
+    await expect(presenter.getByTestId('state:fullscreen-prompt')).toBeHidden();
 
     await presenter.waitForFunction(() => {
         const video = document.querySelector('#media-container > video');
         return video instanceof HTMLVideoElement && !video.paused && video.currentTime > 0.2;
     });
-    await expect(presenter.locator('#statusMessage')).toBeHidden();
+    await expect(presenter.getByTestId('state:presenter-status')).toBeHidden();
 
     await presenter.evaluate(() => document.exitFullscreen());
     await presenter.waitForFunction(() => !document.fullscreenElement);
-    await expect(presenter.locator('#fullscreen-overlay')).toBeVisible();
+    await expect(presenter.getByTestId('state:fullscreen-prompt')).toBeVisible();
 
     expectNoProblems(controlProblems);
     expectNoProblems(presenterProblems);

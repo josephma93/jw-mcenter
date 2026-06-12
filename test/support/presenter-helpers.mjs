@@ -9,5 +9,5 @@ export async function waitForPresenterElement(presenter, tagName) {
         const element = document.querySelector('#media-container > *');
         return element?.tagName === expectedTagName;
     }, tagName);
-    return presenter.locator('#media-container > *');
+    return presenter.getByTestId('state:presenter-media').locator('> *');
 }
