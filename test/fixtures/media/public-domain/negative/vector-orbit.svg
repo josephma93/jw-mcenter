@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" width="320" height="240">
+  <rect width="320" height="240" fill="#0b1d3a"/>
+  <circle cx="160" cy="120" r="40" fill="#e8a33d"/>
+  <ellipse cx="160" cy="120" rx="110" ry="44" fill="none" stroke="#9fc5e8" stroke-width="3"/>
+  <circle cx="270" cy="120" r="10" fill="#9fc5e8"/>
+  <text x="160" y="225" text-anchor="middle" fill="#9fc5e8" font-family="sans-serif" font-size="14">project-generated SVG test asset</text>
+</svg>
