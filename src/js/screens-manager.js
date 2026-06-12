@@ -140,19 +140,25 @@ function processScreenData(screens) {
 /** @param {RefinedScreen[]} refinedScreens */
 function renderScreenPreview(refinedScreens) {
     const rect = canvasContainer.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+    const canvasWidth = Math.max(1, rect.width);
+    const canvasHeight = Math.max(1, rect.height);
+    const pixelRatio = window.devicePixelRatio || 1;
+    canvas.width = Math.round(canvasWidth * pixelRatio);
+    canvas.height = Math.round(canvasHeight * pixelRatio);
+    canvasContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
     const { totalWidth, totalHeight } = refinedScreens[0];
-    const padding = 20;
-    const scaleX = (canvas.width - padding * 2) / totalWidth;
-    const scaleY = (canvas.height - padding * 2) / totalHeight;
+    const inset = Math.max(6, Math.min(12, Math.min(canvasWidth, canvasHeight) * 0.04));
+    const scaleX = (canvasWidth - inset * 2) / totalWidth;
+    const scaleY = (canvasHeight - inset * 2) / totalHeight;
     const scale = Math.min(scaleX, scaleY);
+    const originX = (canvasWidth - totalWidth * scale) / 2;
+    const originY = (canvasHeight - totalHeight * scale) / 2;
 
     refinedScreens.forEach((scr) => {
         const { index, isPrimary, isBrowserScreen, availWidth, availHeight, offsetX, offsetY } = scr;
-        const scaledX = padding + offsetX * scale;
-        const scaledY = padding + offsetY * scale;
+        const scaledX = originX + offsetX * scale;
+        const scaledY = originY + offsetY * scale;
         const scaledW = availWidth * scale;
         const scaledH = availHeight * scale;
 
@@ -184,7 +190,7 @@ function renderScreenPreview(refinedScreens) {
             canvasContext.strokeRect(scaledWinX, scaledWinY, scaledWinW, scaledWinH);
         }
         canvasContext.fillStyle = 'black';
-        const labelFontSize = Math.round(Math.max(11, Math.min(16, canvas.height * 0.12)));
+        const labelFontSize = Math.round(Math.max(11, Math.min(16, canvasHeight * 0.12)));
         canvasContext.font = `${labelFontSize}px sans-serif`;
         canvasContext.fillText((index + 1).toString(), scaledX + 5, scaledY + labelFontSize + 4);
     });
