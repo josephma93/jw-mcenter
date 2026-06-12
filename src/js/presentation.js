@@ -19,6 +19,9 @@ let currentMediaElement = null;
 /** @type {number} */
 let currentMediaDuration = 0;
 
+/** @type {boolean} */
+let pendingPlayRetry = false;
+
 /**
  * @param {string} message
  */
@@ -27,6 +30,14 @@ function updateStatusMessage(message) {
   if (statusDiv) {
     statusDiv.innerText = message;
     statusDiv.style.display = 'block';
+  }
+}
+
+function clearStatusMessage() {
+  const statusDiv = document.getElementById('statusMessage');
+  if (statusDiv) {
+    statusDiv.innerText = '';
+    statusDiv.style.display = 'none';
   }
 }
 
@@ -39,12 +50,52 @@ function isMediaElement(element) {
 }
 
 /**
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+function isAutoplayRejection(error) {
+  return error instanceof DOMException && error.name === 'NotAllowedError';
+}
+
+/**
+ * @param {unknown} error
+ * @returns {string}
+ */
+function getErrorMessage(error) {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+/**
  * @returns {Promise<void>}
  */
 function requestFullscreen() {
   const docElem = document.documentElement;
   if (docElem.requestFullscreen) return docElem.requestFullscreen();
-  return Promise.reject('Fullscreen API not supported.');
+  return Promise.reject(new Error('Fullscreen API not supported.'));
+}
+
+/**
+ * @param {HTMLMediaElement} element
+ * @returns {Promise<boolean>}
+ */
+async function tryPlayMedia(element) {
+  try {
+    await element.play();
+    pendingPlayRetry = false;
+    clearStatusMessage();
+    return true;
+  } catch (error) {
+    if (isAutoplayRejection(error)) {
+      pendingPlayRetry = true;
+      updateStatusMessage('La reproducción automática fue bloqueada; haz clic en la ventana de presentación para continuar.');
+      return false;
+    }
+
+    pendingPlayRetry = false;
+    updateStatusMessage(`No se pudo reproducir el medio: ${getErrorMessage(error)}`);
+    return false;
+  }
 }
 
 /**
@@ -71,9 +122,23 @@ function updateMediaElement(mediaUrl, mediaType) {
     element.alt = 'Presentation Media';
   }
 
-  element.style.width = '100%';
-  element.style.height = 'auto';
-  element.style.objectFit = 'contain';
+  element.addEventListener('error', () => {
+    pendingPlayRetry = false;
+    updateStatusMessage('No se pudo cargar el medio seleccionado.');
+  });
+
+  if (mediaType === 'video' || mediaType === 'audio') {
+    element.addEventListener('loadeddata', () => {
+      if (!pendingPlayRetry) {
+        clearStatusMessage();
+      }
+    });
+  } else {
+    element.addEventListener('load', () => {
+      clearStatusMessage();
+    });
+  }
+
   mediaContainer.appendChild(element);
   currentMediaElement = element;
 
@@ -81,7 +146,13 @@ function updateMediaElement(mediaUrl, mediaType) {
     element.addEventListener('loadedmetadata', () => {
       currentMediaDuration = /** @type {HTMLMediaElement} */ (element).duration;
     });
+    window.setTimeout(() => {
+      if (currentMediaElement === element) {
+        void tryPlayMedia(/** @type {HTMLMediaElement} */ (element));
+      }
+    }, 0);
   } else {
+    pendingPlayRetry = false;
     currentMediaDuration = 0;
   }
 }
@@ -92,7 +163,7 @@ channels.updateMediaChannel.on.subscribe(data => {
 
 channels.playChannel.on.subscribe(() => {
   if (currentMediaElement && isMediaElement(currentMediaElement)) {
-    currentMediaElement.play();
+    void tryPlayMedia(currentMediaElement);
   }
 });
 
@@ -151,11 +222,15 @@ if (overlay) {
   fromEvent(overlay, 'click')
     .pipe(
       tap(() => {
-        requestFullscreen()
-          .then(() => {
-            overlay.style.display = 'none';
-          })
-          .catch(err => console.error('Fullscreen error:', err));
+        const fullscreenPromise = requestFullscreen().catch(err => {
+          console.error('Fullscreen error:', err);
+        });
+
+        if (pendingPlayRetry && currentMediaElement && isMediaElement(currentMediaElement)) {
+          void tryPlayMedia(currentMediaElement);
+        }
+
+        void fullscreenPromise;
       })
     )
     .subscribe();
