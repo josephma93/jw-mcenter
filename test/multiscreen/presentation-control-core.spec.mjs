@@ -11,18 +11,18 @@ async function waitForAnyPresenterElement(presenter) {
     await presenter.waitForFunction(() => {
         return document.querySelector('#media-container > *') !== null;
     });
-    return presenter.locator('#media-container > *');
+    return presenter.getByTestId('state:presenter-media').locator('> *');
 }
 
 /**
  * @param {import('@playwright/test').Page} page
  */
 async function expectTimeDisplayToAdvance(page) {
-    const playbackTimeDisplay = page.locator('#playbackTimeDisplay');
+    const playbackTimeDisplay = page.getByTestId('state:playback-time');
     await expect(playbackTimeDisplay).not.toHaveText('--:-- / --:--');
     const initialValue = await playbackTimeDisplay.textContent();
     await expect
-        .poll(async () => page.locator('#playbackTimeDisplay').textContent())
+        .poll(async () => page.getByTestId('state:playback-time').textContent())
         .not.toBe(initialValue);
 }
 
@@ -32,57 +32,58 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
     const controlProblems = collectProblems(page);
 
     await page.goto('/');
-    await expect(page.locator('#screensPermissionBtn')).toBeHidden();
+    await expect(page.getByTestId('action:grant-screens-permission')).toBeHidden();
 
-    await expect(page.locator('#endPresentationBtn')).toBeDisabled();
-    await expect(page.locator('#blankScreenBtn')).toBeDisabled();
-    await expect(page.locator('#prevMediaBtn')).toBeDisabled();
-    await expect(page.locator('#nextMediaBtn')).toBeDisabled();
-    await expect(page.locator('#rewindBtn')).toBeDisabled();
-    await expect(page.locator('#fastForwardBtn')).toBeDisabled();
-    await expect(page.locator('#playPauseBtn')).toBeDisabled();
+    await expect(page.getByTestId('action:end-presentation')).toBeDisabled();
+    await expect(page.getByTestId('action:blank-screen')).toBeDisabled();
+    await expect(page.getByTestId('action:previous-media')).toBeDisabled();
+    await expect(page.getByTestId('action:next-media')).toBeDisabled();
+    await expect(page.getByTestId('action:rewind')).toBeDisabled();
+    await expect(page.getByTestId('action:fast-forward')).toBeDisabled();
+    await expect(page.getByTestId('action:toggle-playback')).toBeDisabled();
 
     // The secondary monitor is auto-selected; wait for it before starting.
-    await expect(page.locator('#monitorSelect')).toHaveValue('1');
+    await expect(page.getByTestId('field:monitor')).toHaveValue('1');
 
     // Starting with an empty playlist opens the presenter on a blank stage.
     const popupPromise = page.context().waitForEvent('page');
-    await page.locator('#startPresentationBtn').click();
+    await page.getByTestId('action:start-presentation').click();
     const presenter = await popupPromise;
     const presenterProblems = collectProblems(presenter);
     await presenter.waitForLoadState('domcontentloaded');
     expect(await presenter.evaluate(() => window.screenX)).toBeGreaterThanOrEqual(1920);
 
-    await expect(page.locator('#startPresentationBtn')).toBeDisabled();
-    await expect(page.locator('#endPresentationBtn')).toBeEnabled();
+    await expect(page.getByTestId('action:start-presentation')).toBeDisabled();
+    await expect(page.getByTestId('action:end-presentation')).toBeEnabled();
     // Already blank: nothing to blank out, nothing to play or seek.
-    await expect(page.locator('#blankScreenBtn')).toBeDisabled();
-    await expect(page.locator('#playPauseBtn')).toBeDisabled();
-    await expect(page.locator('#playbackTimeDisplay')).toHaveText('--:-- / --:--');
-    await expect(presenter.locator('#media-container > *')).toHaveCount(0);
+    await expect(page.getByTestId('action:blank-screen')).toBeDisabled();
+    await expect(page.getByTestId('action:toggle-playback')).toBeDisabled();
+    await expect(page.getByTestId('state:playback-time')).toHaveText('--:-- / --:--');
+    await expect(presenter.getByTestId('state:presenter-media').locator('> *')).toHaveCount(0);
 
     // Adding files while blank must not push anything onto the presenter.
     // The 20s fixtures keep the video/audio playing through the whole
     // choreography; the 1s samples end before the playback assertions run.
-    await page.locator('#fileInput').setInputFiles([
+    await page.getByTestId('field:files').setInputFiles([
         mediaFixturePath('longMp4'),
         mediaFixturePath('longMp3'),
         mediaFixturePath('smallPng'),
     ]);
-    await expect(page.locator('#fileList .file-item')).toHaveCount(3);
-    await expect(presenter.locator('#media-container > *')).toHaveCount(0);
-    await expect(page.locator('#blankScreenBtn')).toBeDisabled();
+    const playlistItems = page.getByTestId('files-list-item');
+    await expect(playlistItems).toHaveCount(3);
+    await expect(presenter.getByTestId('state:presenter-media').locator('> *')).toHaveCount(0);
+    await expect(page.getByTestId('action:blank-screen')).toBeDisabled();
 
     // The operator decides what gets shown.
-    await page.locator('#fileList .file-item').nth(0).locator('.show-btn').click();
+    await playlistItems.nth(0).getByTestId('files-list-item-action:show').click();
 
-    await expect(page.locator('#blankScreenBtn')).toBeEnabled();
+    await expect(page.getByTestId('action:blank-screen')).toBeEnabled();
     // First playlist item: there is nothing before it to navigate to.
-    await expect(page.locator('#prevMediaBtn')).toBeDisabled();
-    await expect(page.locator('#nextMediaBtn')).toBeEnabled();
-    await expect(page.locator('#rewindBtn')).toBeEnabled();
-    await expect(page.locator('#fastForwardBtn')).toBeEnabled();
-    await expect(page.locator('#playPauseBtn')).toBeEnabled();
+    await expect(page.getByTestId('action:previous-media')).toBeDisabled();
+    await expect(page.getByTestId('action:next-media')).toBeEnabled();
+    await expect(page.getByTestId('action:rewind')).toBeEnabled();
+    await expect(page.getByTestId('action:fast-forward')).toBeEnabled();
+    await expect(page.getByTestId('action:toggle-playback')).toBeEnabled();
 
     await waitForPresenterElement(presenter, 'VIDEO');
     await presenter.waitForFunction(() => {
@@ -90,9 +91,9 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
         return video instanceof HTMLVideoElement && video.currentTime > 0.2;
     });
     await expectTimeDisplayToAdvance(page);
-    await expect(page.locator('#playPauseBtn')).toHaveText('⏸️');
+    await expect(page.getByTestId('action:toggle-playback')).toHaveText('⏸️');
 
-    await page.locator('#playPauseBtn').click();
+    await page.getByTestId('action:toggle-playback').click();
     await presenter.waitForFunction(() => {
         const video = document.querySelector('#media-container > video');
         return video instanceof HTMLVideoElement && video.paused;
@@ -114,14 +115,14 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
     });
     expect(pauseSample.paused).toBe(true);
     expect(pauseSample.delta).toBeLessThan(0.02);
-    await expect(page.locator('#playPauseBtn')).toHaveText('▶️');
+    await expect(page.getByTestId('action:toggle-playback')).toHaveText('▶️');
 
-    await page.locator('#playPauseBtn').click();
+    await page.getByTestId('action:toggle-playback').click();
     await presenter.waitForFunction(() => {
         const video = document.querySelector('#media-container > video');
         return video instanceof HTMLVideoElement && !video.paused;
     });
-    await expect(page.locator('#playPauseBtn')).toHaveText('⏸️');
+    await expect(page.getByTestId('action:toggle-playback')).toHaveText('⏸️');
 
     const videoDuration = await presenter.evaluate(() => {
         const video = document.querySelector('#media-container > video');
@@ -132,7 +133,7 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
         return video.duration;
     });
     expect(videoDuration).toBeGreaterThan(0);
-    await page.locator('#fastForwardBtn').click();
+    await page.getByTestId('action:fast-forward').click();
     await presenter.waitForFunction(
         /** @param {number} previousTime */
         (previousTime) => {
@@ -152,8 +153,8 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
     });
     // Seeking to the end fires 'ended': the play/pause button must reflect
     // that the media is no longer playing instead of still offering pause.
-    await expect(page.locator('#playPauseBtn')).toHaveText('▶️');
-    await page.locator('#rewindBtn').click();
+    await expect(page.getByTestId('action:toggle-playback')).toHaveText('▶️');
+    await page.getByTestId('action:rewind').click();
     await presenter.waitForFunction(
         /** @param {number} previousTime */
         (previousTime) => {
@@ -165,62 +166,62 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
         return video.currentTime <= expectedTime + 0.05;
     }, videoDuration);
 
-    await page.locator('#nextMediaBtn').click();
+    await page.getByTestId('action:next-media').click();
     await waitForPresenterElement(presenter, 'AUDIO');
     await presenter.waitForFunction(() => {
         const audio = document.querySelector('#media-container > audio');
         return audio instanceof HTMLAudioElement && audio.currentTime > 0.2;
     });
 
-    await page.locator('#fileList .file-item').nth(2).locator('.show-btn').click();
+    await playlistItems.nth(2).getByTestId('files-list-item-action:show').click();
     await waitForPresenterElement(presenter, 'IMG');
     await presenter.waitForFunction(() => {
         const image = document.querySelector('#media-container > img');
         return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
     });
-    await expect(page.locator('#fileList .file-item').nth(2)).toHaveClass(/file-item--current/);
-    await expect(page.locator('#playbackTimeDisplay')).toHaveText('--:-- / --:--');
+    await expect(playlistItems.nth(2)).toHaveAttribute('data-status', 'current');
+    await expect(page.getByTestId('state:playback-time')).toHaveText('--:-- / --:--');
     // Images have no timeline, and this is the last playlist item.
-    await expect(page.locator('#playPauseBtn')).toBeDisabled();
-    await expect(page.locator('#rewindBtn')).toBeDisabled();
-    await expect(page.locator('#fastForwardBtn')).toBeDisabled();
-    await expect(page.locator('#nextMediaBtn')).toBeDisabled();
-    await expect(page.locator('#prevMediaBtn')).toBeEnabled();
+    await expect(page.getByTestId('action:toggle-playback')).toBeDisabled();
+    await expect(page.getByTestId('action:rewind')).toBeDisabled();
+    await expect(page.getByTestId('action:fast-forward')).toBeDisabled();
+    await expect(page.getByTestId('action:next-media')).toBeDisabled();
+    await expect(page.getByTestId('action:previous-media')).toBeEnabled();
 
     // Blank the stage mid-presentation, then bring the image back.
-    await page.locator('#blankScreenBtn').click();
-    await expect(presenter.locator('#media-container > *')).toHaveCount(0);
-    await expect(page.locator('#blankScreenBtn')).toBeDisabled();
-    await expect(page.locator('#fileList .file-item--current')).toHaveCount(0);
-    await expect(page.locator('#playbackTimeDisplay')).toHaveText('--:-- / --:--');
-    await page.locator('#fileList .file-item').nth(2).locator('.show-btn').click();
+    await page.getByTestId('action:blank-screen').click();
+    await expect(presenter.getByTestId('state:presenter-media').locator('> *')).toHaveCount(0);
+    await expect(page.getByTestId('action:blank-screen')).toBeDisabled();
+    await expect(page.locator('[data-testid="files-list-item"][data-status="current"]')).toHaveCount(0);
+    await expect(page.getByTestId('state:playback-time')).toHaveText('--:-- / --:--');
+    await playlistItems.nth(2).getByTestId('files-list-item-action:show').click();
     await waitForPresenterElement(presenter, 'IMG');
-    await expect(page.locator('#fileList .file-item').nth(2)).toHaveClass(/file-item--current/);
+    await expect(playlistItems.nth(2)).toHaveAttribute('data-status', 'current');
 
     const presenterManualClose = presenter.waitForEvent('close');
     await presenter.close();
     await presenterManualClose;
-    await expect(page.locator('#startPresentationBtn')).toBeEnabled({ timeout: 3000 });
-    await expect(page.locator('#endPresentationBtn')).toBeDisabled({ timeout: 3000 });
-    await expect(page.locator('#blankScreenBtn')).toBeDisabled({ timeout: 3000 });
-    await expect(page.locator('#prevMediaBtn')).toBeDisabled({ timeout: 3000 });
-    await expect(page.locator('#nextMediaBtn')).toBeDisabled({ timeout: 3000 });
-    await expect(page.locator('#rewindBtn')).toBeDisabled({ timeout: 3000 });
-    await expect(page.locator('#fastForwardBtn')).toBeDisabled({ timeout: 3000 });
-    await expect(page.locator('#playPauseBtn')).toBeDisabled({ timeout: 3000 });
+    await expect(page.getByTestId('action:start-presentation')).toBeEnabled({ timeout: 3000 });
+    await expect(page.getByTestId('action:end-presentation')).toBeDisabled({ timeout: 3000 });
+    await expect(page.getByTestId('action:blank-screen')).toBeDisabled({ timeout: 3000 });
+    await expect(page.getByTestId('action:previous-media')).toBeDisabled({ timeout: 3000 });
+    await expect(page.getByTestId('action:next-media')).toBeDisabled({ timeout: 3000 });
+    await expect(page.getByTestId('action:rewind')).toBeDisabled({ timeout: 3000 });
+    await expect(page.getByTestId('action:fast-forward')).toBeDisabled({ timeout: 3000 });
+    await expect(page.getByTestId('action:toggle-playback')).toBeDisabled({ timeout: 3000 });
 
     const reopenPromise = page.context().waitForEvent('page');
-    await page.locator('#startPresentationBtn').click();
+    await page.getByTestId('action:start-presentation').click();
     const reopenedPresenter = await reopenPromise;
     const reopenedPresenterProblems = collectProblems(reopenedPresenter);
     await reopenedPresenter.waitForLoadState('domcontentloaded');
     await waitForAnyPresenterElement(reopenedPresenter);
 
     const closePromise = reopenedPresenter.waitForEvent('close');
-    await page.locator('#endPresentationBtn').click();
+    await page.getByTestId('action:end-presentation').click();
     await closePromise;
-    await expect(page.locator('#startPresentationBtn')).toBeEnabled();
-    await expect(page.locator('#playbackTimeDisplay')).toHaveText('--:-- / --:--');
+    await expect(page.getByTestId('action:start-presentation')).toBeEnabled();
+    await expect(page.getByTestId('state:playback-time')).toHaveText('--:-- / --:--');
 
     expectNoProblems(controlProblems);
     expectNoProblems(presenterProblems);
@@ -233,11 +234,11 @@ test('closing the control panel makes the presenter self-close within 8 seconds 
     const controlProblems = collectProblems(page);
 
     await page.goto('/');
-    await page.locator('#fileInput').setInputFiles([mediaFixturePath('mp4')]);
-    await page.locator('#monitorSelect').selectOption('1');
+    await page.getByTestId('field:files').setInputFiles([mediaFixturePath('mp4')]);
+    await page.getByTestId('field:monitor').selectOption('1');
 
     const popupPromise = page.context().waitForEvent('page');
-    await page.locator('#startPresentationBtn').click();
+    await page.getByTestId('action:start-presentation').click();
     const presenter = await popupPromise;
     const presenterProblems = collectProblems(presenter);
     await presenter.waitForLoadState('domcontentloaded');

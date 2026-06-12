@@ -7,28 +7,29 @@ test('window-management grant exposes the secondary monitor only', async ({ page
 
     await page.goto('/');
 
-    await expect(page.locator('#screensPermissionBtn')).toBeHidden();
+    await expect(page.getByTestId('action:grant-screens-permission')).toBeHidden();
 
-    const selectableOptions = page.locator('#monitorSelect option:not([value=""])');
-    const emptyOptions = page.locator('#monitorSelect option[value=""]');
+    const monitorSelect = page.getByTestId('field:monitor');
+    const selectableOptions = monitorSelect.locator('option:not([value=""])');
+    const emptyOptions = monitorSelect.locator('option[value=""]');
     await expect(selectableOptions).toHaveCount(1);
     await expect(emptyOptions).toHaveCount(0);
     await expect(selectableOptions.first()).toHaveAttribute('value', '1');
     await expect(selectableOptions.first()).toHaveText('Monitor 2 - secundario - 1280x720');
     // The first secondary monitor is auto-selected as the default.
-    await expect(page.locator('#monitorSelect')).toHaveValue('1');
+    await expect(monitorSelect).toHaveValue('1');
 
-    await page.getByRole('button', { name: 'Monitores' }).click();
-    await expect(page.locator('#monitorFlyoutPanel')).toBeVisible();
+    await page.getByTestId('monitor-flyout-open').click();
+    await expect(page.getByTestId('monitor-flyout-panel')).toBeVisible();
 
-    const legendRows = page.locator('#legendTableBody tr');
+    const legendRows = page.getByTestId('monitors-list-item');
     await expect(legendRows).toHaveCount(2);
-    await expect(legendRows.nth(0)).toContainText('1');
-    await expect(legendRows.nth(0)).toContainText('1920x1080');
-    await expect(legendRows.nth(0)).toContainText('Principal');
-    await expect(legendRows.nth(1)).toContainText('2');
-    await expect(legendRows.nth(1)).toContainText('1280x720');
-    await expect(legendRows.nth(1)).toContainText('Secundaria');
+    const rowByKey = (/** @type {string} */ key) =>
+        page.locator(`[data-testid="monitors-list-item"][data-key="${key}"]`);
+    await expect(rowByKey('1')).toContainText('1920x1080');
+    await expect(rowByKey('1')).toContainText('Principal');
+    await expect(rowByKey('2')).toContainText('1280x720');
+    await expect(rowByKey('2')).toContainText('Secundaria');
 
     expectNoProblems(problems);
 });

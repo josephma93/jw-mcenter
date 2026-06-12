@@ -188,6 +188,11 @@ function renderPlaylistCurrentHighlight() {
         const isCurrent = presenterAlive && !!currentItem && item === currentItem;
         const $showBtn = $item.find('.show-btn');
         $item.toggleClass('file-item--current', isCurrent);
+        if (isCurrent) {
+            $item.attr('data-status', 'current');
+        } else {
+            $item.removeAttr('data-status');
+        }
         if (item) {
             $item.find('.playlist-item-state').text(isCurrent
                 ? activePlaylistState(item)

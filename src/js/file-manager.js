@@ -340,7 +340,10 @@ unsupportedFiles$
         map(descriptors => descriptors.map(d => d.file.name)),
     )
     .subscribe(fileNames => {
-        $errorList.empty().append(fileNames.map(name => $("<li>").text(name)));
+        $errorList.empty().append(fileNames.map(name => $("<li>")
+            .attr("data-testid", "unsupported-files-list-item")
+            .attr("data-key", name)
+            .text(name)));
         $errorDialog.dialog({
             modal: true,
             maxWidth: 1024

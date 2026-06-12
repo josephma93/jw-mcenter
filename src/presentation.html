@@ -102,11 +102,11 @@
   </script>
 </head>
 
-<body>
+<body data-testid="page:presenter">
   <!-- Empty until the control panel sends media; the app must work offline. -->
-  <div id="media-container"></div>
-  <div id="fullscreen-overlay">Haz clic para pantalla completa</div>
-  <div id="statusMessage"></div>
+  <div id="media-container" data-testid="state:presenter-media"></div>
+  <div id="fullscreen-overlay" data-testid="state:fullscreen-prompt">Haz clic para pantalla completa</div>
+  <div id="statusMessage" data-testid="state:presenter-status"></div>
   <script type="module" src="./js/presentation.js"></script>
 </body>
 

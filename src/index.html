@@ -16,21 +16,22 @@
   <link rel="stylesheet" href="css/file-management.css">
 </head>
 
-<body>
+<body data-testid="page:control-panel">
   <div class="container">
-    <header class="app-header">
+    <header class="app-header" data-testid="region:header">
       <h1>Centro Multimedia <span class="app-header-subtitle">· Panel de Control</span></h1>
-      <section id="monitorFlyout" class="monitor-preview monitor-flyout" aria-label="Monitores">
+      <section id="monitorFlyout" class="monitor-preview monitor-flyout" aria-label="Monitores" data-testid="region:monitors">
         <button
           id="monitorFlyoutToggle"
           class="monitor-flyout-toggle"
           type="button"
           popovertarget="monitorFlyoutPanel"
+          data-testid="monitor-flyout-open"
         >
           <span class="section-icon" aria-hidden="true">▣</span>
           Monitores
         </button>
-        <div id="monitorFlyoutPanel" class="monitor-flyout-panel card" popover="auto">
+        <div id="monitorFlyoutPanel" class="monitor-flyout-panel card" popover="auto" data-testid="monitor-flyout-panel">
           <div class="monitor-map">
             <div id="canvas-container">
               <canvas id="layoutCanvas" width="208" height="156"></canvas>
@@ -46,14 +47,14 @@
                   <th>Estado</th>
                 </tr>
               </thead>
-              <tbody id="legendTableBody"></tbody>
+              <tbody id="legendTableBody" data-testid="monitors-list"></tbody>
             </table>
           </div>
         </div>
       </section>
     </header>
     <main class="main">
-      <section class="presentation-controls card">
+      <section class="presentation-controls card" data-testid="region:presentation-controls">
         <div class="presentation-primary-row">
           <div class="presentation-title">
             <h2><span class="section-icon" aria-hidden="true">#</span> Control Maestro</h2>
@@ -61,26 +62,26 @@
           </div>
           <div class="monitor-picker">
             <label for="monitorSelect">Abrir presentador en</label>
-            <select id="monitorSelect">
+            <select id="monitorSelect" data-testid="field:monitor">
               <option value="">Sin pantalla seleccionada</option>
             </select>
           </div>
           <div class="session-actions">
-            <button id="startPresentationBtn" class="btn-primary">Iniciar presentación</button>
-            <button id="endPresentationBtn" class="btn-danger">Terminar presentación</button>
+            <button id="startPresentationBtn" class="btn-primary" data-testid="action:start-presentation">Iniciar presentación</button>
+            <button id="endPresentationBtn" class="btn-danger" data-testid="action:end-presentation">Terminar presentación</button>
           </div>
         </div>
         <div class="presentation-runtime-row">
           <div class="now-playing-copy">
-            <span id="currentMediaState" class="now-playing-state">Sin presentación</span>
-            <strong id="currentMediaName">Sin presentación activa</strong>
-            <span id="currentMediaMeta">Inicia la presentación o muestra un archivo.</span>
+            <span id="currentMediaState" class="now-playing-state" data-testid="state:current-media">Sin presentación</span>
+            <strong id="currentMediaName" data-testid="state:current-media-name">Sin presentación activa</strong>
+            <span id="currentMediaMeta" data-testid="state:current-media-meta">Inicia la presentación o muestra un archivo.</span>
           </div>
           <div class="runtime-transport">
             <div class="runtime-progress">
-              <output id="playbackTimeDisplay" aria-live="polite">--:-- / --:--</output>
+              <output id="playbackTimeDisplay" aria-live="polite" data-testid="state:playback-time">--:-- / --:--</output>
               <div class="playback-progress" aria-hidden="true">
-                <span id="playbackProgressBar"></span>
+                <span id="playbackProgressBar" data-testid="state:playback-progress"></span>
               </div>
             </div>
             <div class="control-toolbar" aria-label="Controles de presentación">
@@ -90,6 +91,7 @@
                 title="Mostrar archivo anterior"
                 data-tooltip="Mostrar archivo anterior"
                 aria-label="Mostrar archivo anterior"
+                data-testid="action:previous-media"
               >⏮</button>
               <button
                 id="rewindBtn"
@@ -97,6 +99,7 @@
                 title="Retroceder 10 segundos"
                 data-tooltip="Retroceder 10 segundos"
                 aria-label="Retroceder 10 segundos"
+                data-testid="action:rewind"
               >⏪</button>
               <button
                 id="playPauseBtn"
@@ -104,6 +107,7 @@
                 title="Reproducir contenido actual"
                 data-tooltip="Reproducir contenido actual"
                 aria-label="Reproducir contenido actual"
+                data-testid="action:toggle-playback"
               >▶️</button>
               <button
                 id="fastForwardBtn"
@@ -111,6 +115,7 @@
                 title="Avanzar 10 segundos"
                 data-tooltip="Avanzar 10 segundos"
                 aria-label="Avanzar 10 segundos"
+                data-testid="action:fast-forward"
               >⏩</button>
               <button
                 id="nextMediaBtn"
@@ -118,6 +123,7 @@
                 title="Mostrar archivo siguiente"
                 data-tooltip="Mostrar archivo siguiente"
                 aria-label="Mostrar archivo siguiente"
+                data-testid="action:next-media"
               >⏭</button>
               <span class="toolbar-separator" aria-hidden="true"></span>
               <button
@@ -126,41 +132,42 @@
                 title="Mostrar pantalla en blanco"
                 data-tooltip="Mostrar pantalla en blanco"
                 aria-label="Mostrar pantalla en blanco"
+                data-testid="action:blank-screen"
               >□</button>
             </div>
           </div>
         </div>
-        <p id="mediaControlHint" class="media-control-hint">
+        <p id="mediaControlHint" class="media-control-hint" data-testid="state:media-control-hint">
           Los controles de reproducción se activan cuando hay audio o video en pantalla.
         </p>
       </section>
 
-      <section class="media-list">
+      <section class="media-list" data-testid="region:media-list">
         <div class="drop-container" id="dropContainer">
           <div class="drop-header">
             <div class="playlist-heading">
               <h2><span class="section-icon" aria-hidden="true">≡</span> Lista de reproducción</h2>
-              <span id="playlistCount" class="playlist-count">0 elementos</span>
+              <span id="playlistCount" class="playlist-count" data-testid="state:playlist-count">0 elementos</span>
             </div>
             <div class="drop-header-actions">
-              <button id="selectFilesBtn" class="btn-primary">Agregar archivos</button>
-              <button id="clearListBtn" class="btn-danger">Vaciar lista</button>
+              <button id="selectFilesBtn" class="btn-primary" data-testid="action:select-files">Agregar archivos</button>
+              <button id="clearListBtn" class="btn-danger" data-testid="action:clear-list">Vaciar lista</button>
             </div>
           </div>
           <div class="drop-content">
-            <div id="emptyState" class="empty-state">
+            <div id="emptyState" class="empty-state" data-testid="state:empty-results">
               <p>No hay archivos agregados.</p>
               <p>Arrastra y suelta archivos aquí para comenzar.</p>
               <div class="arrow">↓</div>
             </div>
-            <ul class="file-list" id="fileList"></ul>
+            <ul class="file-list" id="fileList" data-testid="files-list"></ul>
           </div>
-          <input type="file" id="fileInput" multiple accept="image/*,video/*,audio/*" style="display:none;">
+          <input type="file" id="fileInput" multiple accept="image/*,video/*,audio/*" style="display:none;" data-testid="field:files">
         </div>
 
-        <div id="errorDialog" title="Archivos no aceptados" style="display:none;">
+        <div id="errorDialog" title="Archivos no aceptados" style="display:none;" data-testid="unsupported-files-dialog">
           <p>Los siguientes archivos no son compatibles:</p>
-          <ul id="errorList"></ul>
+          <ul id="errorList" data-testid="unsupported-files-list"></ul>
         </div>
       </section>
     </main>
@@ -171,6 +178,7 @@
     class="screens-permission-dialog"
     aria-labelledby="screensPermissionTitle"
     aria-describedby="screensPermissionDescription screensPermissionStatus"
+    data-testid="screens-permission-dialog"
   >
     <div class="screens-permission-content">
       <span class="screens-permission-icon" aria-hidden="true">▣</span>
@@ -183,11 +191,11 @@
         <p class="screens-permission-note">
           Si el navegador no muestra la solicitud, habilita el permiso de monitores en la configuración del sitio.
         </p>
-        <p id="screensPermissionStatus" class="screens-permission-status" aria-live="assertive"></p>
+        <p id="screensPermissionStatus" class="screens-permission-status" aria-live="assertive" data-testid="state:screens-permission-status"></p>
       </div>
     </div>
     <div class="screens-permission-actions">
-      <button id="screensPermissionBtn" class="screens-permission-btn btn-primary" autofocus>
+      <button id="screensPermissionBtn" class="screens-permission-btn btn-primary" autofocus data-testid="action:grant-screens-permission">
         Permitir acceso a los monitores
       </button>
     </div>
@@ -195,7 +203,7 @@
 
   <script type="text/html" id="legendTemplate">
     <% screens.forEach(function forEachScreen(screen) { %>
-      <tr>
+      <tr data-testid="monitors-list-item" data-key="<%= screen.index + 1 %>">
         <td>
           <span class="monitor-id">
             <span class="monitor-swatch <%= screen.isPrimary ? 'primary-screen' : 'secondary-screen' %>"></span>
@@ -224,7 +232,7 @@
   </script>
 
   <script type="text/html" id="fileItemTemplate">
-      <li class="file-item file-item--<%= mediaKindClass %>">
+      <li class="file-item file-item--<%= mediaKindClass %>" data-testid="files-list-item" data-key="<%= id %>">
           <div class="file-info">
               <div class="preview-container">
                     <% if (isImage) { %>
@@ -244,9 +252,9 @@
                         <span class="media-badge timeline-badge">Sin tiempo</span>
                       <% } %>
                   </div>
-                  <span class="file-name" title="<%= fileName %>"><%= fileName %></span>
+                  <span class="file-name" title="<%= fileName %>" data-testid="files-list-item-name"><%= fileName %></span>
                   <p class="file-type">
-                    <span class="playlist-item-state">Listo para mostrar</span>
+                    <span class="playlist-item-state" data-testid="files-list-item-state">Listo para mostrar</span>
                   </p>
               </div>
           </div>
@@ -257,6 +265,7 @@
                     class="show-btn btn-primary"
                     title="Mostrar este archivo en la pantalla del presentador"
                     aria-label="Mostrar <%= fileName %> en la pantalla del presentador"
+                    data-testid="files-list-item-action:show"
                   >▶ Mostrar</button>
                   <div class="controls">
                       <button
@@ -264,12 +273,14 @@
                         title="Duplicar este archivo en la lista"
                         data-tooltip="Duplicar este archivo en la lista"
                         aria-label="Duplicar <%= fileName %> en la lista"
+                        data-testid="files-list-item-action:duplicate"
                       >⧉</button>
                       <button
                         class="delete-btn icon-btn small-icon-btn"
                         title="Eliminar este archivo de la lista"
                         data-tooltip="Eliminar este archivo de la lista"
                         aria-label="Eliminar <%= fileName %> de la lista"
+                        data-testid="files-list-item-action:delete"
                       >✕</button>
                   </div>
               </div>
@@ -279,13 +290,15 @@
                     title="Mover este archivo hacia arriba"
                     data-tooltip="Mover este archivo hacia arriba"
                     aria-label="Mover <%= fileName %> hacia arriba"
+                    data-testid="files-list-item-action:move-up"
                   >↑</button>
-                  <span class="drag-handle" title="Arrastrar este archivo para reordenarlo" aria-label="Arrastrar elemento">☰</span>
+                  <span class="drag-handle" title="Arrastrar este archivo para reordenarlo" aria-label="Arrastrar elemento" data-testid="files-list-item-action:drag">☰</span>
                   <button
                     class="move-down icon-btn small-icon-btn"
                     title="Mover este archivo hacia abajo"
                     data-tooltip="Mover este archivo hacia abajo"
                     aria-label="Mover <%= fileName %> hacia abajo"
+                    data-testid="files-list-item-action:move-down"
                   >↓</button>
               </div>
           </div>
