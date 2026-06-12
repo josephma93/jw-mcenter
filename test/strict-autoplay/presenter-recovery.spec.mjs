@@ -1,62 +1,25 @@
 // @ts-check
-import fs from 'node:fs/promises';
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/window-management.mjs';
 import { collectProblems, expectNoProblems } from '../support/e2e-helpers.mjs';
 import { mediaFixturePath } from '../support/media-fixtures.mjs';
 import { waitForPresenterElement } from '../support/presenter-helpers.mjs';
 
-const SHARED_WORKER_BRIDGE_STUB = `
-function createChannel() {
-  const subscribers = [];
-  return {
-    on: {
-      subscribe(handler) {
-        subscribers.push(handler);
-        return {
-          unsubscribe() {
-            const index = subscribers.indexOf(handler);
-            if (index >= 0) subscribers.splice(index, 1);
-          }
-        };
-      }
-    },
-    send: {
-      next(payload) {
-        for (const subscriber of subscribers) {
-          subscriber(payload);
-        }
-      }
-    }
-  };
-}
+test('presenter recovers from strict autoplay blocking after overlay click', async ({
+    pageWithWindowManagement: page,
+}) => {
+    const controlProblems = collectProblems(page);
+    const context = page.context();
 
-export function initSharedWorkerRxBridge() {
-  const channels = {
-    updateMediaChannel: createChannel(),
-    playChannel: createChannel(),
-    pauseChannel: createChannel(),
-    fastForwardChannel: createChannel(),
-    rewindChannel: createChannel(),
-    pingChannel: createChannel(),
-    pongChannel: createChannel(),
-    mediaTimeUpdateChannel: createChannel()
-  };
-
-  window.__presentationTestBridge = channels;
-  return channels;
-}
-`;
-
-test('presenter recovers from strict autoplay blocking after overlay click', async ({ page }) => {
-    const problems = collectProblems(page);
-    const videoBytes = await fs.readFile(mediaFixturePath('mp4'));
-
-    await page.addInitScript(() => {
+    await context.addInitScript(() => {
         const originalPlay = HTMLMediaElement.prototype.play;
         let shouldRejectAutoplay = true;
 
         HTMLMediaElement.prototype.play = function playWithStrictAutoplayShim() {
-            if (shouldRejectAutoplay && !document.fullscreenElement) {
+            if (
+                shouldRejectAutoplay &&
+                window.location.pathname.endsWith('/presentation.html') &&
+                !document.fullscreenElement
+            ) {
                 shouldRejectAutoplay = false;
                 return Promise.reject(new DOMException('Autoplay blocked for test', 'NotAllowedError'));
             }
@@ -64,56 +27,51 @@ test('presenter recovers from strict autoplay blocking after overlay click', asy
         };
     });
 
-    await page.route('**/js/shared-worker-bridge.js', async route => {
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/javascript',
-            body: SHARED_WORKER_BRIDGE_STUB,
-        });
-    });
-    await page.route('**/test-media/sample.mp4', async route => {
-        await route.fulfill({
-            status: 200,
-            contentType: 'video/mp4',
-            body: videoBytes,
-        });
-    });
+    await page.goto('/');
+    await page.locator('#fileInput').setInputFiles([mediaFixturePath('mp4')]);
+    await page.locator('#monitorSelect').selectOption('1');
 
-    await page.goto('/presentation.html');
-    await page.waitForFunction(() => {
-        const testWindow = /** @type {any} */ (window);
-        return Boolean(testWindow.__presentationTestBridge);
-    });
+    const popupPromise = context.waitForEvent('page');
+    await page.locator('#startPresentationBtn').click();
+    const presenter = await popupPromise;
+    const presenterProblems = collectProblems(presenter);
+    await presenter.waitForLoadState('domcontentloaded');
 
-    await page.evaluate(() => {
-        const testWindow = /** @type {any} */ (window);
-        testWindow.__presentationTestBridge.updateMediaChannel.send.next({
-            mediaUrl: '/test-media/sample.mp4',
-            mediaType: 'video',
-        });
-    });
+    await waitForPresenterElement(presenter, 'VIDEO');
+    await expect(presenter.locator('#statusMessage')).toContainText('haz clic en la ventana de presentación');
 
-    await waitForPresenterElement(page, 'VIDEO');
-    await expect(page.locator('#statusMessage')).toContainText('haz clic en la ventana de presentación');
-
-    await page.waitForFunction(() => {
+    const blockedSample = await presenter.evaluate(async () => {
         const video = document.querySelector('#media-container > video');
-        return video instanceof HTMLVideoElement && video.paused && video.currentTime < 0.05;
+        if (!(video instanceof HTMLVideoElement)) {
+            return { paused: false, delta: Infinity };
+        }
+        const samples = [];
+        for (let i = 0; i < 12; i += 1) {
+            samples.push(video.currentTime);
+            await new Promise(requestAnimationFrame);
+        }
+        return {
+            paused: video.paused,
+            delta: Math.max(...samples) - Math.min(...samples),
+        };
     });
+    expect(blockedSample.paused).toBe(true);
+    expect(blockedSample.delta).toBeLessThan(0.02);
 
-    await page.locator('#fullscreen-overlay').click({ force: true });
-    await page.waitForFunction(() => Boolean(document.fullscreenElement));
-    await expect(page.locator('#fullscreen-overlay')).toBeHidden();
+    await presenter.locator('#fullscreen-overlay').click({ force: true });
+    await presenter.waitForFunction(() => Boolean(document.fullscreenElement));
+    await expect(presenter.locator('#fullscreen-overlay')).toBeHidden();
 
-    await page.waitForFunction(() => {
+    await presenter.waitForFunction(() => {
         const video = document.querySelector('#media-container > video');
         return video instanceof HTMLVideoElement && !video.paused && video.currentTime > 0.2;
     });
-    await expect(page.locator('#statusMessage')).toBeHidden();
+    await expect(presenter.locator('#statusMessage')).toBeHidden();
 
-    await page.evaluate(() => document.exitFullscreen());
-    await page.waitForFunction(() => !document.fullscreenElement);
-    await expect(page.locator('#fullscreen-overlay')).toBeVisible();
+    await presenter.evaluate(() => document.exitFullscreen());
+    await presenter.waitForFunction(() => !document.fullscreenElement);
+    await expect(presenter.locator('#fullscreen-overlay')).toBeVisible();
 
-    expectNoProblems(problems);
+    expectNoProblems(controlProblems);
+    expectNoProblems(presenterProblems);
 });

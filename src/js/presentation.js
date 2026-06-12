@@ -87,6 +87,7 @@ async function tryPlayMedia(element) {
     return true;
   } catch (error) {
     if (isAutoplayRejection(error)) {
+      element.pause();
       pendingPlayRetry = true;
       updateStatusMessage('La reproducción automática fue bloqueada; haz clic en la ventana de presentación para continuar.');
       return false;
