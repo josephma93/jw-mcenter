@@ -2,7 +2,7 @@
 
 ## Propósito del Proyecto
 
-Este proyecto es una Aplicación Web Progresiva (PWA) diseñada específicamente para la comunidad de Testigos de Jehová, con el propósito de facilitar la presentación de contenido multimedia durante reuniones, asambleas u otros eventos religiosos. La aplicación permite gestionar y mostrar diversos tipos de medios (imágenes, videos y audio) a través de varios monitores o pantallas.
+Este proyecto es una aplicación web local diseñada específicamente para la comunidad de Testigos de Jehová, con el propósito de facilitar la presentación de contenido multimedia durante reuniones, asambleas u otros eventos religiosos. La aplicación permite gestionar y mostrar diversos tipos de medios (imágenes, videos y audio) a través de varios monitores o pantallas.
 
 ## Características Principales
 
@@ -18,13 +18,13 @@ Este proyecto es una Aplicación Web Progresiva (PWA) diseñada específicamente
 
 6. **Interfaz de Usuario Intuitiva**: Panel de control con vista previa de monitores, lista de medios y controles de presentación.
 
-7. **Funcionalidad Offline**: Como PWA, puede funcionar sin conexión a internet una vez instalada.
+7. **Ejecución Local**: Las dependencias del navegador están vendorizadas en el repositorio. La instalación PWA y el modo offline activo quedan para una fase posterior; el service worker existe pero no está registrado.
 
 ## Tecnologías Utilizadas
 
 - **Frontend**: HTML, CSS y JavaScript crudos — **sin paso de build**: el navegador ejecuta los archivos tal como están escritos
 - **Librerías**: jQuery, jQuery UI, RxJS, EJS (para plantillas), vendorizadas localmente en `src/vendor/` (sin CDNs, funciona offline)
-- **Servidor Web**: cualquier servidor estático; en desarrollo se usa [portless](https://portless.sh/) para HTTPS con URL estable (`https://jw-mcenter.localhost`)
+- **Servidor Web**: cualquier servidor estático; en desarrollo se usa [portless](https://portless.sh/) para HTTPS con URL estable (`https://jw-mcenter.localhost` en `main`, `https://<worktree>.jw-mcenter.localhost` en worktrees)
 
 ## Estructura del Repositorio
 
@@ -36,7 +36,7 @@ Este proyecto es una Aplicación Web Progresiva (PWA) diseñada específicamente
 
 ## Cómo Ejecutar
 
-Ver [CONTRIBUTING.md](CONTRIBUTING.md). En corto: `nvm use && npm install && npm start`, y abrir `https://jw-mcenter.localhost` en un navegador Chromium.
+Ver [CONTRIBUTING.md](CONTRIBUTING.md). En corto: `nvm use && npm install && npm run dev`, y abrir la URL de Portless en un navegador Chromium. En worktrees, la URL incluye el prefijo de la rama para poder ejecutar varias copias en paralelo.
 
 ## Público Objetivo
 
@@ -44,4 +44,4 @@ Esta aplicación está diseñada específicamente para ser utilizada por miembro
 
 ## Estado del Proyecto
 
-Prototipo en desarrollo activo. El camino principal (arrancar el panel, gestionar la lista de medios, abrir la ventana de presentación) funciona y está cubierto por pruebas de humo; la sincronización completa de medios entre ventanas está en progreso. 
+POC CU-01 + CU-02 implementado en el flujo automatizado local: agregar archivos de imagen/video/audio, seleccionar monitor secundario, abrir presentador, navegar entre medios, play/pausa, ±10s, terminar presentación y supervisar el cierre maestro/presentador. La aceptación final en hardware real debe registrarse con la lista de verificación de [TESTING.md](TESTING.md).
