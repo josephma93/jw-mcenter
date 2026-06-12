@@ -75,34 +75,6 @@ button:disabled {
     white-space: nowrap;
 }
 
-.icon-btn[data-tooltip]::after {
-    position: absolute;
-    left: 50%;
-    bottom: calc(100% + 8px);
-    z-index: 50;
-    width: max-content;
-    max-width: 220px;
-    padding: 6px 8px;
-    border-radius: 5px;
-    background: #1f2933;
-    color: #ffffff;
-    content: attr(data-tooltip);
-    font-size: 0.78rem;
-    font-weight: 500;
-    line-height: 1.2;
-    opacity: 0;
-    pointer-events: none;
-    text-align: center;
-    transform: translateX(-50%) translateY(2px);
-    transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.icon-btn[data-tooltip]:hover::after,
-.icon-btn[data-tooltip]:focus-visible::after {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-}
-
 .btn-primary {
     background: var(--primary);
     border-color: var(--primary);

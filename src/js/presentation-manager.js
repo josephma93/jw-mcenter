@@ -255,7 +255,6 @@ function renderControlState() {
     $playPauseBtn.attr({
         'aria-label': playPauseAction,
         title: playPauseAction,
-        'data-tooltip': playPauseAction,
     });
     renderCurrentMediaSummary();
     renderPlaylistCurrentHighlight();
