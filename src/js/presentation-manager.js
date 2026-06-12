@@ -56,7 +56,6 @@ let commandChannels = null;
 /** @type {JQuery<HTMLElement>} */ let $currentMediaState;
 /** @type {JQuery<HTMLElement>} */ let $currentMediaName;
 /** @type {JQuery<HTMLElement>} */ let $currentMediaMeta;
-/** @type {JQuery<HTMLElement>} */ let $mediaControlHint;
 /** @type {JQuery<HTMLElement>} */ let $fileList;
 
 function isPresenterOpen() {
@@ -144,27 +143,11 @@ function setCurrentMediaState(label, tone) {
  * @param {import('./file-manager.js').FileItem} item
  * @returns {string}
  */
-function inactivePlaylistState(item) {
-    if (item.detected === 'isImage') {
-        return 'Lista para mostrar: imagen sin controles de tiempo.';
-    }
-    return 'Lista para mostrar: tendrá controles de reproducción al presentarse.';
-}
-
-/**
- * @param {import('./file-manager.js').FileItem} item
- * @returns {string}
- */
 function activePlaylistState(item) {
-    if (item.detected === 'isImage') {
-        return 'Imagen en pantalla: reproducción y saltos no aplican.';
-    }
     if (item.detected === 'isAudio' || item.detected === 'isVideo') {
-        return isPlaying
-            ? 'Reproduciéndose en la pantalla del presentador.'
-            : 'En pantalla; reproducción pausada o esperando al presentador.';
+        return isPlaying ? 'Reproduciéndose' : 'En pausa';
     }
-    return 'En pantalla del presentador.';
+    return 'En pantalla';
 }
 
 /**
@@ -196,7 +179,7 @@ function renderPlaylistCurrentHighlight() {
         if (item) {
             $item.find('.playlist-item-state').text(isCurrent
                 ? activePlaylistState(item)
-                : inactivePlaylistState(item));
+                : 'Listo para mostrar');
         }
         $showBtn
             .prop('disabled', isCurrent)
@@ -209,7 +192,6 @@ function renderCurrentMediaSummary() {
         setCurrentMediaState('Sin presentación', 'idle');
         $currentMediaName.text('Sin presentación activa');
         $currentMediaMeta.text(`Destino preparado: ${selectedMonitorLabel()}.`);
-        $mediaControlHint.text('Los controles de reproducción se activan cuando hay audio o video en pantalla.');
         return;
     }
 
@@ -217,7 +199,6 @@ function renderCurrentMediaSummary() {
         setCurrentMediaState('Pantalla en blanco', 'blank');
         $currentMediaName.text('Pantalla en blanco');
         $currentMediaMeta.text(`Presentador abierto en ${selectedMonitorLabel()}.`);
-        $mediaControlHint.text('Usa Mostrar en la lista para enviar contenido al presentador.');
         return;
     }
 
@@ -228,9 +209,6 @@ function renderCurrentMediaSummary() {
     setCurrentMediaState(isPlaying && isTimeBasedMedia ? 'Reproduciendo' : 'En pantalla', 'active');
     $currentMediaName.text(currentItem.file.name);
     $currentMediaMeta.text(`${mediaKind} / ${fileType} - ${selectedMonitorLabel()}`);
-    $mediaControlHint.text(isTimeBasedMedia
-        ? 'Reproducción, pausa y saltos de 10 segundos aplican a este contenido.'
-        : 'Imagen en pantalla: reproducción, pausa y saltos de tiempo no aplican.');
 }
 
 function renderControlState() {
@@ -424,7 +402,6 @@ function initialize(fileManager, screenManager) {
     $currentMediaState = $('#currentMediaState');
     $currentMediaName = $('#currentMediaName');
     $currentMediaMeta = $('#currentMediaMeta');
-    $mediaControlHint = $('#mediaControlHint');
     $fileList = $('#fileList');
 
     screenManager.selectedMonitor$.subscribe(monitor => {
