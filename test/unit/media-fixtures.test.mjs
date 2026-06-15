@@ -24,6 +24,7 @@ test('fixture inventory is complete and files exist', () => {
         'mp4',
         'portraitPng',
         'smallPng',
+        'unsupportedPdf',
         'webm',
     ]);
 

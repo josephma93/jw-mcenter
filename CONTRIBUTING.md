@@ -11,16 +11,17 @@ The rules that make this work:
 1. **App code is ES modules.** Every file in `src/js/` uses `import`/`export`
    with **relative paths including the `.js` extension**.
 2. **Bare specifiers resolve via the import map.** `import { ... } from 'rxjs'`
-   works because `index.html` and `presentation.html` declare an import map
-   pointing `rxjs` at `src/vendor/rxjs.esm.js`. If you add a page that uses
-   app modules, copy the import map into it.
+   and `import Sortable from 'sortablejs'`
+   work because `index.html` and `presentation.html` declare an import map
+   pointing bare imports at files in `src/vendor/`. If you add a page that uses
+   app modules, copy the relevant import map entries into it.
 3. **Worker code uses relative imports only.** Import maps apply to documents,
    not workers — `src/js/shared-worker.mjs` cannot use bare specifiers.
 4. **Third-party code is vendored, never hotlinked.** No CDN `<script>` tags:
    the app must work fully offline. `src/vendor/` is committed.
-5. **Classic-script exceptions:** jQuery, jQuery UI, and EJS load as plain
+5. **Classic-script exceptions:** jQuery and EJS load as plain
    `<script>` tags providing globals (`$`, `ejs`). They are the documented
-   legacy exception; everything else is ESM.
+   legacy exception; everything else, including SortableJS, is ESM.
 6. **Type-checked JavaScript — hard requirement.** Every `.js`/`.mjs` file
    starts with `// @ts-check` and carries JSDoc annotations (typedefs for
    shared shapes, `@param`/`@returns` on functions, `@type` on module-level

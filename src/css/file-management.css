@@ -136,9 +136,12 @@
 .sortable-placeholder {
     border: 2px dashed #ccc;
     background: #f9f9f9;
-    height: 104px;
-    margin: 10px 0;
     border-radius: 6px;
+    opacity: 0.35;
+}
+
+.sortable-placeholder > * {
+    visibility: hidden;
 }
 
 .file-info {

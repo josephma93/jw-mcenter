@@ -49,19 +49,9 @@ const COPY_TARGETS = [
         to: 'jquery.min.js',
     },
     {
-        packageName: 'jquery-ui',
-        from: 'node_modules/jquery-ui/dist/jquery-ui.min.js',
-        to: 'jquery-ui.min.js',
-    },
-    {
-        packageName: 'jquery-ui',
-        from: 'node_modules/jquery-ui/dist/themes/base/jquery-ui.min.css',
-        to: 'jquery-ui.min.css',
-    },
-    {
-        packageName: 'jquery-ui',
-        from: 'node_modules/jquery-ui/dist/themes/base/images',
-        to: 'images',
+        packageName: 'sortablejs',
+        from: 'node_modules/sortablejs/modular/sortable.esm.js',
+        to: 'sortable.esm.js',
     },
     {
         packageName: 'ejs',

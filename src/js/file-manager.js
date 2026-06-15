@@ -2,20 +2,22 @@
 import {
     BehaviorSubject,
     Subject,
-    from,
     fromEvent,
-    partition,
-    buffer,
-    filter,
     map,
     mergeMap,
     tap,
 } from 'rxjs';
+import Sortable from 'sortablejs';
+import {
+    IS_AUDIO,
+    IS_IMAGE,
+    IS_VIDEO,
+    detectImportableMediaType,
+} from './media-import-validation.mjs';
 import { moveItemSwapWrap } from './presentation-state.mjs';
 
 /**
- * Media kind detected for a file. Doubles as the EJS template flag name.
- * @typedef {'isImage' | 'isVideo' | 'isAudio'} DetectedMediaType
+ * @typedef {import('./media-import-validation.mjs').DetectedMediaType} DetectedMediaType
  */
 
 /**
@@ -34,10 +36,6 @@ import { moveItemSwapWrap } from './presentation-state.mjs';
  * @property {DetectedMediaType | ''} detected Empty string when unsupported.
  */
 
-const IS_IMAGE = 'isImage';
-const IS_VIDEO = 'isVideo';
-const IS_AUDIO = 'isAudio';
-
 /** @type {JQuery<HTMLElement>} */ let $dropContainer;
 /** @type {JQuery<HTMLElement>} */ let $fileList;
 /** @type {JQuery<HTMLElement>} */ let $emptyState;
@@ -45,8 +43,9 @@ const IS_AUDIO = 'isAudio';
 /** @type {JQuery<HTMLElement>} */ let $fileInput;
 /** @type {JQuery<HTMLElement>} */ let $selectFilesBtn;
 /** @type {JQuery<HTMLElement>} */ let $clearListBtn;
-/** @type {JQuery<HTMLElement>} */ let $errorDialog;
 /** @type {JQuery<HTMLElement>} */ let $errorList;
+/** @type {HTMLDialogElement} */ let clearListDialog;
+/** @type {HTMLDialogElement} */ let errorDialog;
 /** @type {string} */ let fileItemHTML;
 
 /** @type {BehaviorSubject<FileItem[]>} */
@@ -76,33 +75,21 @@ function initializeDOMThings() {
     $fileInput = $("#fileInput");
     $selectFilesBtn = $("#selectFilesBtn");
     $clearListBtn = $("#clearListBtn");
-    $errorDialog = $("#errorDialog");
     $errorList = $("#errorList");
+    clearListDialog = getDialogElement("clearListDialog");
+    errorDialog = getDialogElement("errorDialog");
     fileItemHTML = $("#fileItemTemplate").html().trim();
 
-    $fileList.sortable({
-        axis: "y",
-        containment: "parent",
-        cursor: "grabbing",
-        forceHelperSize: true,
-        forcePlaceholderSize: true,
+    Sortable.create(/** @type {HTMLElement} */ ($fileList.get(0)), {
+        animation: 150,
+        direction: "vertical",
+        draggable: ".file-item",
+        forceFallback: true,
+        fallbackTolerance: 3,
+        ghostClass: "sortable-placeholder",
         handle: ".drag-handle",
-        placeholder: "sortable-placeholder",
-        scroll: false,
-        tolerance: "pointer",
-        update() {
-            const newOrder = $fileList.children()
-                .map((_, el) => $(el).attr("data-index"))
-                .get()
-                .map(index => parseInt(String(index), 10));
-            const currentOrder = filesState$.getValue()
-                .map((_, i) => i);
-            if (!orderEquals(newOrder, currentOrder)) {
-                const newItems = $fileList.children()
-                    .map((_, el) => /** @type {FileItem} */ ($(el).data("fileItem")))
-                    .get();
-                filesState$.next(newItems);
-            }
+        onUpdate() {
+            syncStateFromFileListOrder();
         },
     });
 
@@ -149,21 +136,14 @@ function initializeDOMThings() {
 
     fromEvent(/** @type {HTMLElement} */ ($clearListBtn.get(0)), "click")
         .subscribe(() => {
-            $("<div>¿Estás seguro que deseas vaciar la lista?</div>")
-                .dialog({
-                    modal: true,
-                    title: "Confirmar",
-                    buttons: {
-                        "Sí": function () {
-                            intentToClearFiles$.next();
-                            $(this).dialog("close");
-                        },
-                        "No": function () {
-                            $(this).dialog("close");
-                        }
-                    }
-                });
+            showDialog(clearListDialog);
         });
+
+    clearListDialog.addEventListener("close", () => {
+        if (clearListDialog.returnValue === "confirm") {
+            intentToClearFiles$.next();
+        }
+    });
 
     filesState$
         .subscribe(handleFileListStateChange);
@@ -191,6 +171,43 @@ function initializeDOMThings() {
             const index = parseInt(String($(this).closest(".file-item").attr("data-index")), 10);
             intentToShowFile$.next(index);
         });
+}
+
+/**
+ * @param {string} id
+ * @returns {HTMLDialogElement}
+ */
+function getDialogElement(id) {
+    const element = document.getElementById(id);
+    if (!(element instanceof HTMLDialogElement)) {
+        throw new Error(`Expected #${id} to be a dialog element.`);
+    }
+    return element;
+}
+
+/**
+ * @param {HTMLDialogElement} dialog
+ */
+function showDialog(dialog) {
+    dialog.returnValue = "";
+    if (!dialog.open) {
+        dialog.showModal();
+    }
+}
+
+function syncStateFromFileListOrder() {
+    const newOrder = $fileList.children()
+        .map((_, el) => $(el).attr("data-index"))
+        .get()
+        .map(index => parseInt(String(index), 10));
+    const currentOrder = filesState$.getValue()
+        .map((_, i) => i);
+    if (!orderEquals(newOrder, currentOrder)) {
+        const newItems = $fileList.children()
+            .map((_, el) => /** @type {FileItem} */ ($(el).data("fileItem")))
+            .get();
+        filesState$.next(newItems);
+    }
 }
 
 /**
@@ -255,24 +272,6 @@ function fileTypeLabel(file) {
 }
 
 /**
- * @param {File} file
- * @returns {DetectedMediaType | ''} Empty string when the browser can't play it.
- */
-function testFileSupportAndDetectType(file) {
-    const type = file.type;
-    if (type.startsWith("image/")) return IS_IMAGE;
-    if (type.startsWith("video/")) {
-        const video = document.createElement("video");
-        if (!!video.canPlayType && video.canPlayType(type) !== "") return IS_VIDEO;
-    }
-    if (type.startsWith("audio/")) {
-        const audio = document.createElement("audio");
-        if (!!audio.canPlayType && audio.canPlayType(type) !== "") return IS_AUDIO;
-    }
-    return '';
-}
-
-/**
  * Re-renders the playlist DOM from state.
  * @param {FileItem[]} newState
  */
@@ -301,38 +300,47 @@ function handleFileListStateChange(newState) {
         frag.appendChild(/** @type {HTMLElement} */ ($elem.get(0)));
     });
     $fileList.empty().append(frag);
-    $fileList.sortable("refresh");
     $emptyState.toggle(newState.length === 0);
     $playlistCount.text(`${newState.length} ${newState.length === 1 ? 'elemento' : 'elementos'}`);
 }
 
-const fileDescriptors$ = intentToAddFiles$.pipe(
-    mergeMap(files => from(Array.from(files))),
-    map(file => ({ file, detected: testFileSupportAndDetectType(file) }))
+/**
+ * @param {File} file
+ * @returns {Promise<FileDescriptor>}
+ */
+async function describeImportCandidate(file) {
+    try {
+        return {
+            file,
+            detected: await detectImportableMediaType(file),
+        };
+    } catch {
+        return {
+            file,
+            detected: '',
+        };
+    }
+}
+
+const fileDescriptorBatches$ = intentToAddFiles$.pipe(
+    mergeMap(files => Promise.all(Array.from(files, describeImportCandidate)), 1)
 );
 
-const [validFiles$, invalidFiles$] = partition(
-    fileDescriptors$, descriptor => !!descriptor.detected
-);
+fileDescriptorBatches$
+    .subscribe(descriptors => {
+        const validDescriptors = descriptors.filter(descriptor => !!descriptor.detected);
+        if (validDescriptors.length > 0) {
+            const fileItemsBatch = validDescriptors.map(descriptor => (
+                createFileItem(descriptor.file, /** @type {DetectedMediaType} */ (descriptor.detected))
+            ));
+            const currentItems = filesState$.getValue();
+            filesState$.next([...currentItems, ...fileItemsBatch]);
+        }
 
-validFiles$
-    .pipe(
-        map(descriptor => createFileItem(descriptor.file, /** @type {DetectedMediaType} */ (descriptor.detected))),
-        buffer(intentToAddFiles$),
-        filter(fileItemsBatch => fileItemsBatch.length > 0)
-    )
-    .subscribe(fileItemsBatch => {
-        const currentItems = filesState$.getValue();
-        filesState$.next([...currentItems, ...fileItemsBatch]);
-    });
-
-invalidFiles$
-    .pipe(
-        buffer(intentToAddFiles$),
-        filter(invalidNames => invalidNames.length > 0)
-    )
-    .subscribe(invalidNames => {
-        unsupportedFiles$.next(invalidNames);
+        const invalidDescriptors = descriptors.filter(descriptor => !descriptor.detected);
+        if (invalidDescriptors.length > 0) {
+            unsupportedFiles$.next(invalidDescriptors);
+        }
     });
 
 unsupportedFiles$
@@ -344,10 +352,7 @@ unsupportedFiles$
             .attr("data-testid", "unsupported-files-list-item")
             .attr("data-key", name)
             .text(name)));
-        $errorDialog.dialog({
-            modal: true,
-            maxWidth: 1024
-        });
+        showDialog(errorDialog);
     });
 
 

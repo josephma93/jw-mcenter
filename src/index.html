@@ -10,7 +10,6 @@
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="vendor/normalize.css" />
-  <link rel="stylesheet" href="vendor/jquery-ui.min.css" />
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/screens-manager.css">
   <link rel="stylesheet" href="css/file-management.css">
@@ -153,16 +152,47 @@
             </div>
             <ul class="file-list" id="fileList" data-testid="files-list"></ul>
           </div>
-          <input type="file" id="fileInput" multiple accept="image/*,video/*,audio/*" style="display:none;" data-testid="field:files">
+          <input
+            type="file"
+            id="fileInput"
+            multiple
+            accept=".jpg,.jpeg,.png,.gif,.webp,.avif,.bmp,.svg,.mp4,.webm,.mp3,image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp,image/svg+xml,video/mp4,video/webm,audio/mpeg"
+            style="display:none;"
+            data-testid="field:files"
+          >
         </div>
 
-        <div id="errorDialog" title="Archivos no aceptados" style="display:none;" data-testid="unsupported-files-dialog">
+        <dialog
+          id="errorDialog"
+          class="app-dialog"
+          aria-labelledby="errorDialogTitle"
+          data-testid="unsupported-files-dialog"
+        >
+          <h2 id="errorDialogTitle">Archivos no aceptados</h2>
           <p>Los siguientes archivos no son compatibles:</p>
           <ul id="errorList" data-testid="unsupported-files-list"></ul>
-        </div>
+          <form method="dialog" class="app-dialog-actions">
+            <button class="btn-primary" value="close" autofocus data-testid="unsupported-files-dialog-close">Cerrar</button>
+          </form>
+        </dialog>
       </section>
     </main>
   </div>
+
+  <dialog
+    id="clearListDialog"
+    class="app-dialog"
+    aria-labelledby="clearListDialogTitle"
+    aria-describedby="clearListDialogDescription"
+    data-testid="clear-list-dialog"
+  >
+    <h2 id="clearListDialogTitle">Confirmar</h2>
+    <p id="clearListDialogDescription">¿Estás seguro que deseas vaciar la lista?</p>
+    <form method="dialog" class="app-dialog-actions">
+      <button value="cancel" autofocus data-testid="clear-list-dialog-cancel">No</button>
+      <button class="btn-danger" value="confirm" data-testid="clear-list-dialog-confirm">Sí</button>
+    </form>
+  </dialog>
 
   <dialog
     id="screensPermissionDialog"
@@ -293,13 +323,13 @@
   </script>
 
   <script src="vendor/jquery.min.js"></script>
-  <script src="vendor/jquery-ui.min.js"></script>
   <script src="vendor/ejs.min.js"></script>
 
   <script type="importmap">
     {
       "imports": {
-        "rxjs": "./vendor/rxjs.esm.js"
+        "rxjs": "./vendor/rxjs.esm.js",
+        "sortablejs": "./vendor/sortable.esm.js"
       }
     }
   </script>

@@ -11,27 +11,11 @@
     },
     {
       "package": {
-        "name": "jquery-ui",
-        "version": "1.14.2"
+        "name": "sortablejs",
+        "version": "1.15.7"
       },
-      "source": "node_modules/jquery-ui/dist/jquery-ui.min.js",
-      "target": "jquery-ui.min.js"
-    },
-    {
-      "package": {
-        "name": "jquery-ui",
-        "version": "1.14.2"
-      },
-      "source": "node_modules/jquery-ui/dist/themes/base/jquery-ui.min.css",
-      "target": "jquery-ui.min.css"
-    },
-    {
-      "package": {
-        "name": "jquery-ui",
-        "version": "1.14.2"
-      },
-      "source": "node_modules/jquery-ui/dist/themes/base/images",
-      "target": "images"
+      "source": "node_modules/sortablejs/modular/sortable.esm.js",
+      "target": "sortable.esm.js"
     },
     {
       "package": {

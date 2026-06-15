@@ -23,7 +23,7 @@ Este proyecto es una aplicación web local diseñada específicamente para la co
 ## Tecnologías Utilizadas
 
 - **Frontend**: HTML, CSS y JavaScript crudos — **sin paso de build**: el navegador ejecuta los archivos tal como están escritos
-- **Librerías**: jQuery, jQuery UI, RxJS, EJS (para plantillas), vendorizadas localmente en `src/vendor/` (sin CDNs, funciona offline)
+- **Librerías**: jQuery, SortableJS (reordenamiento), RxJS, EJS (para plantillas), vendorizadas localmente en `src/vendor/` (sin CDNs, funciona offline)
 - **Servidor Web**: cualquier servidor estático; en desarrollo se usa [portless](https://portless.sh/) para HTTPS con URL estable (`https://jw-mcenter.localhost` en `main`, `https://<worktree>.jw-mcenter.localhost` en worktrees)
 
 ## Estructura del Repositorio

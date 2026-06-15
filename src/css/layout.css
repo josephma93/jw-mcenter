@@ -40,8 +40,6 @@ select {
     cursor: pointer;
 }
 
-/* Shared button styles. jQuery UI widgets keep their own look because
-   .ui-button rules win on specificity. */
 button {
     font: inherit;
     font-size: 0.95rem;
@@ -104,6 +102,38 @@ select {
     border-radius: 6px;
     background: var(--surface);
     color: var(--text);
+}
+
+.app-dialog {
+    width: min(520px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 20px 50px rgb(31 41 51 / 0.28);
+}
+
+.app-dialog::backdrop {
+    background: rgb(31 41 51 / 0.45);
+}
+
+.app-dialog h2 {
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+}
+
+.app-dialog p {
+    margin: 0 0 14px;
+    color: var(--text-muted);
+}
+
+.app-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
 }
 
 .container {

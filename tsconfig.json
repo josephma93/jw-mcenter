@@ -10,7 +10,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "lib": ["esnext", "dom", "dom.iterable"],
-    "types": ["jquery", "jqueryui", "node"],
+    "types": ["jquery", "node"],
     "skipLibCheck": true
   },
   "include": [
