@@ -1,6 +1,12 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { mediaFixturePath } from '../support/media-fixtures.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import {
+    mediaFixturesDir,
+    mediaFixturePath,
+    rejectedMediaFixturePrefix,
+} from '../support/media-fixtures.mjs';
 import {
     collectProblems,
     EXPECTED_PERMISSION_NOISE,
@@ -17,6 +23,16 @@ async function closeScreensPermissionDialog(page) {
             dialog.close();
         }
     });
+}
+
+/**
+ * @returns {string[]}
+ */
+function rejectedMediaFixturePaths() {
+    return fs.readdirSync(mediaFixturesDir)
+        .filter(fileName => fileName.startsWith(rejectedMediaFixturePrefix))
+        .map(fileName => path.join(mediaFixturesDir, fileName))
+        .sort();
 }
 
 test('control panel boots with permission-denied flow isolated to smoke', async ({ page }) => {
@@ -41,12 +57,13 @@ test('adding a deterministic fixture renders it in the playlist', async ({ page 
     await page.goto('/');
     await page.getByTestId('field:files').setInputFiles(mediaFixturePath('smallPng'));
     await expect(page.getByTestId('files-list-item')).toHaveCount(1);
-    await expect(page.getByTestId('files-list-item-name')).toHaveText('small.png');
+    await expect(page.getByTestId('files-list-item-name')).toHaveText(path.basename(mediaFixturePath('smallPng')));
     expectNoProblems(problems, EXPECTED_PERMISSION_NOISE);
 });
 
 test('dragging a playlist handle reorders files', async ({ page }) => {
     const problems = collectProblems(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/');
     await closeScreensPermissionDialog(page);
     await page.getByTestId('field:files').setInputFiles([
@@ -56,7 +73,11 @@ test('dragging a playlist handle reorders files', async ({ page }) => {
     ]);
 
     const itemNames = page.getByTestId('files-list-item-name');
-    await expect(itemNames).toHaveText(['small.png', 'sample.mp4', 'sample.mp3']);
+    await expect(itemNames).toHaveText([
+        path.basename(mediaFixturePath('smallPng')),
+        path.basename(mediaFixturePath('mp4')),
+        path.basename(mediaFixturePath('mp3')),
+    ]);
 
     const firstHandle = page
         .getByTestId('files-list-item')
@@ -68,18 +89,35 @@ test('dragging a playlist handle reorders files', async ({ page }) => {
     if (!handleBox || !lastItemBox) {
         throw new Error('Expected playlist drag handle and drop target to be visible.');
     }
+    const viewportHeight = await page.evaluate(() => window.innerHeight);
+    const dropY = Math.min(lastItemBox.y + lastItemBox.height + 12, viewportHeight - 8);
 
     await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
     await page.mouse.down();
     await page.mouse.move(
-        lastItemBox.x + lastItemBox.width / 2,
-        lastItemBox.y + lastItemBox.height - 4,
-        { steps: 12 }
+        handleBox.x + handleBox.width / 2,
+        handleBox.y + handleBox.height / 2 + 24,
+        { steps: 8 }
     );
+    await page.mouse.move(
+        lastItemBox.x + lastItemBox.width / 2,
+        lastItemBox.y + lastItemBox.height / 2,
+        { steps: 20 }
+    );
+    await page.mouse.move(
+        lastItemBox.x + lastItemBox.width / 2,
+        dropY,
+        { steps: 20 }
+    );
+    await page.waitForTimeout(100);
     await page.mouse.up();
     await flushFrames(page);
 
-    await expect(itemNames).toHaveText(['sample.mp4', 'sample.mp3', 'small.png']);
+    await expect(itemNames).toHaveText([
+        path.basename(mediaFixturePath('mp4')),
+        path.basename(mediaFixturePath('mp3')),
+        path.basename(mediaFixturePath('smallPng')),
+    ]);
     expectNoProblems(problems, EXPECTED_PERMISSION_NOISE);
 });
 
@@ -91,9 +129,47 @@ test('unsupported files open and close a native dialog', async ({ page }) => {
     await page.getByTestId('field:files').setInputFiles(mediaFixturePath('unsupportedPdf'));
 
     await expect(page.getByTestId('unsupported-files-dialog')).toBeVisible();
-    await expect(page.getByTestId('unsupported-files-list-item')).toHaveText('tiny-note.pdf');
+    await expect(page.getByTestId('unsupported-files-list-item')).toHaveText(
+        path.basename(mediaFixturePath('unsupportedPdf'))
+    );
     await page.getByTestId('unsupported-files-dialog-close').click();
     await expect(page.getByTestId('unsupported-files-dialog')).toBeHidden();
+    expectNoProblems(problems, EXPECTED_PERMISSION_NOISE);
+});
+
+test('chromium-decodable edge image fixtures import', async ({ page }) => {
+    const problems = collectProblems(page);
+    const edgeImageFixtures = [
+        mediaFixturePath('avif'),
+        mediaFixturePath('bmp'),
+        mediaFixturePath('svg'),
+    ];
+    await page.goto('/');
+    await closeScreensPermissionDialog(page);
+
+    await page.getByTestId('field:files').setInputFiles(edgeImageFixtures);
+
+    await expect(page.getByTestId('files-list-item')).toHaveCount(edgeImageFixtures.length);
+    await expect(page.getByTestId('files-list-item-name')).toHaveText(
+        edgeImageFixtures.map(filePath => path.basename(filePath))
+    );
+    await expect(page.getByTestId('unsupported-files-dialog')).toBeHidden();
+    expectNoProblems(problems, EXPECTED_PERMISSION_NOISE);
+});
+
+test('rejected media fixtures are rejected from import', async ({ page }) => {
+    const problems = collectProblems(page);
+    const negativeFixturePaths = rejectedMediaFixturePaths();
+    await page.goto('/');
+    await closeScreensPermissionDialog(page);
+
+    await page.getByTestId('field:files').setInputFiles(negativeFixturePaths);
+
+    await expect(page.getByTestId('files-list-item')).toHaveCount(0);
+    await expect(page.getByTestId('unsupported-files-dialog')).toBeVisible();
+    await expect(page.getByTestId('unsupported-files-list-item')).toHaveText(
+        negativeFixturePaths.map(filePath => path.basename(filePath))
+    );
     expectNoProblems(problems, EXPECTED_PERMISSION_NOISE);
 });
 
