@@ -50,6 +50,14 @@ function isMediaElement(element) {
 }
 
 /**
+ * @param {string} mediaType
+ * @returns {boolean}
+ */
+function isTimelinePresenterMediaType(mediaType) {
+  return mediaType === 'video' || mediaType === 'audio';
+}
+
+/**
  * @param {unknown} error
  * @returns {boolean}
  */
@@ -153,7 +161,7 @@ function updateMediaElement(mediaUrl, mediaType) {
     updateStatusMessage('No se pudo cargar el medio seleccionado.');
   });
 
-  if (mediaType === 'video' || mediaType === 'audio') {
+  if (isTimelinePresenterMediaType(mediaType)) {
     element.addEventListener('loadeddata', () => {
       if (!pendingPlayRetry) {
         clearStatusMessage();
@@ -168,7 +176,7 @@ function updateMediaElement(mediaUrl, mediaType) {
   mediaContainer.appendChild(element);
   currentMediaElement = element;
 
-  if (mediaType === 'video' || mediaType === 'audio') {
+  if (isTimelinePresenterMediaType(mediaType)) {
     element.addEventListener('loadedmetadata', () => {
       currentMediaDuration = /** @type {HTMLMediaElement} */ (element).duration;
     });

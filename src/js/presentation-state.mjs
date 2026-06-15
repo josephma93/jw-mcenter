@@ -12,12 +12,16 @@
  * @typedef {Object} PresentationFileItem
  * @property {string} blobURL
  * @property {DetectedMediaType} detected
+ * @property {() => boolean} [isPlayable]
  */
 
 /**
  * 'blank' means "show nothing": the presenter clears its stage entirely.
  * @typedef {'image' | 'video' | 'audio' | 'blank'} PresenterMediaType
  */
+
+/** @type {ReadonlySet<DetectedMediaType>} */
+const PLAYABLE_DETECTED_TYPES = new Set(['isVideo', 'isAudio']);
 
 /**
  * @typedef {Object} UpdateMediaPayload
@@ -125,7 +129,10 @@ export function currentItemIndex(items, currentItem) {
  * @returns {boolean}
  */
 export function isTimeBasedMediaItem(item) {
-    return item?.detected === 'isVideo' || item?.detected === 'isAudio';
+    if (!item) {
+        return false;
+    }
+    return item.isPlayable?.() ?? PLAYABLE_DETECTED_TYPES.has(item.detected);
 }
 
 /**

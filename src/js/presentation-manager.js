@@ -12,7 +12,6 @@ import {
     currentItemIndex,
     itemAtIndex,
     isPlaybackReportForCurrentItem,
-    isTimeBasedMediaItem,
     resolveCurrentItem,
     stepCurrentItem,
     toBlankMediaPayload,
@@ -157,7 +156,7 @@ function setCurrentMediaState(label, tone) {
  * @returns {string}
  */
 function activePlaylistState(item, isPlaying) {
-    if (item.detected === 'isAudio' || item.detected === 'isVideo') {
+    if (item.isPlayable()) {
         return isPlaying ? 'Reproduciéndose' : 'En pausa';
     }
     return 'En pantalla';
@@ -263,7 +262,7 @@ function renderPlaylistRows(rowViewModels) {
 function createControlViewModel(playlist, currentItem, presenterAlive, isPlaying, selectedMonitor) {
     const sessionInactive = !presenterAlive;
     const currentIndex = currentItemIndex(playlist, currentItem);
-    const isTimeBasedMedia = isTimeBasedMediaItem(currentItem);
+    const isTimeBasedMedia = currentItem?.isPlayable() ?? false;
     // Images have no timeline: playback controls are impossible, not just inactive.
     const transportDisabled = sessionInactive || !isTimeBasedMedia;
     const playPauseAction = isPlaying ? 'Pausar contenido actual' : 'Reproducir contenido actual';
@@ -388,7 +387,7 @@ function sendCurrentMediaUpdate() {
         resetPlaybackTimeDisplay();
     } else {
         commandChannels.updateMediaChannel.send.next(toUpdateMediaPayload(currentItem));
-        if (currentItem.detected === 'isImage') {
+        if (currentItem.isImage()) {
             resetPlaybackTimeDisplay();
         }
     }

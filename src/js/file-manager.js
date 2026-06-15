@@ -27,6 +27,10 @@ import { moveItemSwapWrap } from './presentation-state.mjs';
  * @property {File} file
  * @property {string} blobURL
  * @property {DetectedMediaType} detected
+ * @property {() => boolean} isImage
+ * @property {() => boolean} isVideo
+ * @property {() => boolean} isAudio
+ * @property {() => boolean} isPlayable
  */
 
 /**
@@ -235,6 +239,18 @@ function createFileItem(file, detected, providedBlobURL) {
         file,
         blobURL: providedBlobURL ?? URL.createObjectURL(file),
         detected,
+        isImage() {
+            return this.detected === IS_IMAGE;
+        },
+        isVideo() {
+            return this.detected === IS_VIDEO;
+        },
+        isAudio() {
+            return this.detected === IS_AUDIO;
+        },
+        isPlayable() {
+            return this.isVideo() || this.isAudio();
+        },
     };
 }
 
@@ -286,7 +302,7 @@ function handleFileListStateChange(newState) {
             fileName: item.file.name,
             mediaKind: mediaKindLabel(item.detected),
             mediaKindClass: mediaKindClass(item.detected),
-            isTimelineMedia: item.detected === IS_VIDEO || item.detected === IS_AUDIO,
+            isTimelineMedia: item.isPlayable(),
             [IS_IMAGE]: false,
             [IS_VIDEO]: false,
             [IS_AUDIO]: false,
