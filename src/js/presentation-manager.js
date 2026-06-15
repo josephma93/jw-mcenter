@@ -31,6 +31,8 @@ let presentationWindow = null;
 let selectedMonitor = null;
 /** @type {import('./file-manager.js').FileItem | null} */
 let currentItem = null;
+/** @type {import('./file-manager.js').FileItem | null} */
+let lastScrolledCurrentItem = null;
 /** @type {number} */
 let previousCurrentIndex = 0;
 /**
@@ -164,7 +166,22 @@ function renderPlaybackTimeUpdate(payload) {
         : 0);
 }
 
+/**
+ * @param {HTMLElement} element
+ */
+function scrollPlaylistItemIntoView(element) {
+    element.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+    });
+}
+
 function renderPlaylistCurrentHighlight() {
+    const currentItemToScroll = presenterAlive ? currentItem : null;
+    /** @type {HTMLElement | null} */
+    let currentElement = null;
+
     $fileList.children('.file-item').each((_, element) => {
         const $item = $(element);
         const item = /** @type {import('./file-manager.js').FileItem | undefined} */ ($item.data('fileItem'));
@@ -184,7 +201,19 @@ function renderPlaylistCurrentHighlight() {
         $showBtn
             .prop('disabled', isCurrent)
             .text(isCurrent ? 'En pantalla' : '▶ Mostrar');
+        if (isCurrent) {
+            currentElement = element;
+        }
     });
+
+    if (!currentItemToScroll) {
+        lastScrolledCurrentItem = null;
+        return;
+    }
+    if (currentElement && currentItemToScroll !== lastScrolledCurrentItem) {
+        scrollPlaylistItemIntoView(currentElement);
+    }
+    lastScrolledCurrentItem = currentElement ? currentItemToScroll : null;
 }
 
 function renderCurrentMediaSummary() {

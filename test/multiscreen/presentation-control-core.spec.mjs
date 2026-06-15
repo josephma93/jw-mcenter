@@ -26,6 +26,51 @@ async function expectTimeDisplayToAdvance(page) {
         .not.toBe(initialValue);
 }
 
+/**
+ * @param {import('@playwright/test').Page} page
+ */
+async function recordPlaylistScrollIntoViewCalls(page) {
+    await page.evaluate(() => {
+        const originalScrollIntoView = Element.prototype.scrollIntoView;
+        const recorderWindow = /** @type {Window & { __playlistScrollIntoViewCalls: Array<Record<string, string | null>> }} */ (
+            /** @type {unknown} */ (window)
+        );
+        recorderWindow.__playlistScrollIntoViewCalls = [];
+        Element.prototype.scrollIntoView = /** @param {ScrollIntoViewOptions | boolean} [options] */ function recordScrollIntoView(options) {
+            const element = this instanceof HTMLElement ? this : null;
+            recorderWindow.__playlistScrollIntoViewCalls.push({
+                key: element?.getAttribute('data-key') ?? null,
+                status: element?.getAttribute('data-status') ?? null,
+                behavior: options && typeof options === 'object' ? options.behavior ?? null : null,
+                block: options && typeof options === 'object' ? options.block ?? null : null,
+                inline: options && typeof options === 'object' ? options.inline ?? null : null,
+            });
+            originalScrollIntoView.call(this, options);
+        };
+    });
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<boolean>}
+ */
+async function currentPlaylistItemIsVisible(page) {
+    return page.evaluate(() => {
+        const container = document.getElementById('dropContainer');
+        const header = document.querySelector('.drop-header');
+        const current = document.querySelector('[data-testid="files-list-item"][data-status="current"]');
+        if (!(container instanceof HTMLElement) || !(header instanceof HTMLElement) || !(current instanceof HTMLElement)) {
+            return false;
+        }
+
+        const containerRect = container.getBoundingClientRect();
+        const headerRect = header.getBoundingClientRect();
+        const currentRect = current.getBoundingClientRect();
+        const visibleTop = containerRect.top + headerRect.height;
+        return currentRect.top >= visibleTop - 1 && currentRect.bottom <= containerRect.bottom + 1;
+    });
+}
+
 test('control panel drives video, audio, image, and presenter lifecycle on secondary screen', async ({
     pageWithWindowManagement: page,
 }) => {
@@ -226,6 +271,65 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
     expectNoProblems(controlProblems);
     expectNoProblems(presenterProblems);
     expectNoProblems(reopenedPresenterProblems);
+});
+
+test('current playlist item smooth-scrolls into view when transport changes current media', async ({
+    pageWithWindowManagement: page,
+}) => {
+    const controlProblems = collectProblems(page);
+
+    await page.goto('/');
+    await expect(page.getByTestId('action:grant-screens-permission')).toBeHidden();
+    await expect(page.getByTestId('field:monitor')).toHaveValue('1');
+    await page.getByTestId('field:files').setInputFiles(
+        Array.from({ length: 18 }, () => mediaFixturePath('smallPng'))
+    );
+    await expect(page.getByTestId('files-list-item')).toHaveCount(18);
+    await recordPlaylistScrollIntoViewCalls(page);
+
+    const popupPromise = page.context().waitForEvent('page');
+    await page.getByTestId('action:start-presentation').click();
+    const presenter = await popupPromise;
+    const presenterProblems = collectProblems(presenter);
+    await presenter.waitForLoadState('domcontentloaded');
+    await waitForPresenterElement(presenter, 'IMG');
+
+    await page.evaluate(() => {
+        const recorderWindow = /** @type {Window & { __playlistScrollIntoViewCalls: Array<Record<string, string | null>> }} */ (
+            /** @type {unknown} */ (window)
+        );
+        recorderWindow.__playlistScrollIntoViewCalls = [];
+        const dropContainer = document.getElementById('dropContainer');
+        if (dropContainer instanceof HTMLElement) {
+            dropContainer.scrollTop = 0;
+        }
+    });
+
+    const targetIndex = 10;
+    for (let index = 0; index < targetIndex; index += 1) {
+        await page.getByTestId('action:next-media').click();
+    }
+
+    await expect(page.getByTestId('files-list-item').nth(targetIndex)).toHaveAttribute('data-status', 'current');
+    await expect.poll(async () => page.evaluate(() => {
+        const recorderWindow = /** @type {Window & { __playlistScrollIntoViewCalls?: Array<Record<string, string | null>> }} */ (
+            /** @type {unknown} */ (window)
+        );
+        return recorderWindow.__playlistScrollIntoViewCalls?.at(-1) ?? null;
+    })).toMatchObject({
+        status: 'current',
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+    });
+    await expect.poll(() => currentPlaylistItemIsVisible(page), { timeout: 3000 }).toBe(true);
+
+    const closePromise = presenter.waitForEvent('close');
+    await page.getByTestId('action:end-presentation').click();
+    await closePromise;
+
+    expectNoProblems(controlProblems);
+    expectNoProblems(presenterProblems);
 });
 
 test('closing the control panel makes the presenter self-close within 8 seconds @slow', async ({
