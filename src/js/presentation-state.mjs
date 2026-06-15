@@ -26,6 +26,11 @@
  */
 
 /**
+ * @typedef {Object} PlaybackStateReport
+ * @property {unknown} [mediaUrl]
+ */
+
+/**
  * Preserve current moveFile behavior: swap one step and wrap at both ends.
  * @template T
  * @param {readonly T[]} items
@@ -100,6 +105,38 @@ export function itemAtIndex(items, index) {
         return null;
     }
     return items[index] ?? null;
+}
+
+/**
+ * Find a selected item by object identity. Current selection deliberately uses
+ * object refs because reorder/delete behavior depends on preserving the item
+ * object across playlist mutations.
+ * @template T
+ * @param {readonly T[]} items
+ * @param {T | null} currentItem
+ * @returns {number}
+ */
+export function currentItemIndex(items, currentItem) {
+    return currentItem ? items.indexOf(currentItem) : -1;
+}
+
+/**
+ * @param {PresentationFileItem | null} item
+ * @returns {boolean}
+ */
+export function isTimeBasedMediaItem(item) {
+    return item?.detected === 'isVideo' || item?.detected === 'isAudio';
+}
+
+/**
+ * Ignore stale presenter reports from media that is no longer current.
+ * @param {boolean} presenterAlive
+ * @param {PresentationFileItem | null} currentItem
+ * @param {PlaybackStateReport} payload
+ * @returns {boolean}
+ */
+export function isPlaybackReportForCurrentItem(presenterAlive, currentItem, payload) {
+    return presenterAlive && currentItem !== null && payload.mediaUrl === currentItem.blobURL;
 }
 
 /**

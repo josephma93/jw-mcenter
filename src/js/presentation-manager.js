@@ -9,13 +9,24 @@
  */
 import { initSharedWorkerRxBridge } from './shared-worker-bridge.js';
 import {
+    currentItemIndex,
     itemAtIndex,
+    isPlaybackReportForCurrentItem,
+    isTimeBasedMediaItem,
     resolveCurrentItem,
     stepCurrentItem,
     toBlankMediaPayload,
     toUpdateMediaPayload,
 } from './presentation-state.mjs';
-import { interval } from 'rxjs';
+import {
+    BehaviorSubject,
+    combineLatest,
+    distinctUntilChanged,
+    filter,
+    interval,
+    map,
+    shareReplay,
+} from 'rxjs';
 
 const PING_INTERVAL_MS = 2000;
 const PLAYBACK_TIME_IDLE_TEXT = '--:-- / --:--';
@@ -27,22 +38,20 @@ const MEDIA_KIND_LABELS = {
 
 /** @type {Window | null} */
 let presentationWindow = null;
-/** @type {import('./screens-manager.js').RefinedScreen | null} */
-let selectedMonitor = null;
-/** @type {import('./file-manager.js').FileItem | null} */
-let currentItem = null;
-/** @type {import('./file-manager.js').FileItem | null} */
-let lastScrolledCurrentItem = null;
-/** @type {number} */
-let previousCurrentIndex = 0;
+/** @type {BehaviorSubject<import('./screens-manager.js').RefinedScreen | null>} */
+const selectedMonitorSubject = new BehaviorSubject(/** @type {import('./screens-manager.js').RefinedScreen | null} */ (null));
+/** @type {BehaviorSubject<import('./file-manager.js').FileItem | null>} */
+const currentItemSubject = new BehaviorSubject(/** @type {import('./file-manager.js').FileItem | null} */ (null));
+/** @type {BehaviorSubject<number>} */
+const previousCurrentIndexSubject = new BehaviorSubject(0);
 /**
  * Real playback state as reported by the presenter via playback_state events.
  * Never set from local button clicks — the presenter is the source of truth.
- * @type {boolean}
+ * @type {BehaviorSubject<boolean>}
  */
-let isPlaying = false;
-/** @type {boolean} */
-let presenterAlive = false;
+const isPlayingSubject = new BehaviorSubject(false);
+/** @type {BehaviorSubject<boolean>} */
+const presenterAliveSubject = new BehaviorSubject(false);
 /** @type {ReturnType<typeof initSharedWorkerRxBridge> | null} */
 let commandChannels = null;
 /** @type {JQuery<HTMLElement>} */ let $startPresentationBtn;
@@ -106,14 +115,15 @@ function resetPlaybackTimeDisplay() {
 }
 
 /**
+ * @param {import('./screens-manager.js').RefinedScreen | null} monitor
  * @returns {string}
  */
-function selectedMonitorLabel() {
-    if (!selectedMonitor) {
+function selectedMonitorLabel(monitor) {
+    if (!monitor) {
         return 'Sin pantalla seleccionada';
     }
-    const monitorRole = selectedMonitor.isPrimary ? 'principal' : 'secundaria';
-    return `Monitor ${selectedMonitor.index + 1} (${monitorRole})`;
+    const monitorRole = monitor.isPrimary ? 'principal' : 'secundaria';
+    return `Monitor ${monitor.index + 1} (${monitorRole})`;
 }
 
 /**
@@ -143,9 +153,10 @@ function setCurrentMediaState(label, tone) {
 
 /**
  * @param {import('./file-manager.js').FileItem} item
+ * @param {boolean} isPlaying
  * @returns {string}
  */
-function activePlaylistState(item) {
+function activePlaylistState(item, isPlaying) {
     if (item.detected === 'isAudio' || item.detected === 'isVideo') {
         return isPlaying ? 'Reproduciéndose' : 'En pausa';
     }
@@ -177,130 +188,200 @@ function scrollPlaylistItemIntoView(element) {
     });
 }
 
-function renderPlaylistCurrentHighlight() {
-    const currentItemToScroll = presenterAlive ? currentItem : null;
-    /** @type {HTMLElement | null} */
-    let currentElement = null;
+/**
+ * @param {number} itemId
+ * @returns {HTMLElement | null}
+ */
+function getPlaylistItemElementById(itemId) {
+    const element = document.querySelector(`[data-testid="files-list-item"][data-key="${itemId}"]`);
+    return element instanceof HTMLElement ? element : null;
+}
+
+/**
+ * @param {readonly import('./file-manager.js').FileItem[]} playlist
+ * @param {import('./file-manager.js').FileItem | null} currentItem
+ * @param {boolean} presenterAlive
+ * @param {boolean} isPlaying
+ */
+function createPlaylistRowViewModels(playlist, currentItem, presenterAlive, isPlaying) {
+    const currentItemId = presenterAlive && currentItem ? currentItem.id : null;
+
+    return playlist.map(item => {
+        const isCurrent = item.id === currentItemId;
+        return {
+            id: item.id,
+            isCurrent,
+            stateText: isCurrent
+                ? activePlaylistState(item, isPlaying)
+                : 'Listo para mostrar',
+            showDisabled: isCurrent,
+            showText: isCurrent ? 'En pantalla' : '▶ Mostrar',
+        };
+    });
+}
+
+/**
+ * @param {Array<{
+ *   id: number,
+ *   isCurrent: boolean,
+ *   stateText: string,
+ *   showDisabled: boolean,
+ *   showText: string,
+ * }>} rowViewModels
+ */
+function renderPlaylistRows(rowViewModels) {
+    const rowsByKey = new Map(rowViewModels.map(row => [String(row.id), row]));
 
     $fileList.children('.file-item').each((_, element) => {
+        const row = rowsByKey.get(element.getAttribute('data-key') ?? '');
+        if (!row) {
+            return;
+        }
+
         const $item = $(element);
-        const item = /** @type {import('./file-manager.js').FileItem | undefined} */ ($item.data('fileItem'));
-        const isCurrent = presenterAlive && !!currentItem && item === currentItem;
         const $showBtn = $item.find('.show-btn');
-        $item.toggleClass('file-item--current', isCurrent);
-        if (isCurrent) {
+        $item.toggleClass('file-item--current', row.isCurrent);
+        if (row.isCurrent) {
             $item.attr('data-status', 'current');
         } else {
             $item.removeAttr('data-status');
         }
-        if (item) {
-            $item.find('.playlist-item-state').text(isCurrent
-                ? activePlaylistState(item)
-                : 'Listo para mostrar');
-        }
+        $item.find('.playlist-item-state').text(row.stateText);
         $showBtn
-            .prop('disabled', isCurrent)
-            .text(isCurrent ? 'En pantalla' : '▶ Mostrar');
-        if (isCurrent) {
-            currentElement = element;
-        }
+            .prop('disabled', row.showDisabled)
+            .text(row.showText);
     });
-
-    if (!currentItemToScroll) {
-        lastScrolledCurrentItem = null;
-        return;
-    }
-    if (currentElement && currentItemToScroll !== lastScrolledCurrentItem) {
-        scrollPlaylistItemIntoView(currentElement);
-    }
-    lastScrolledCurrentItem = currentElement ? currentItemToScroll : null;
 }
 
-function renderCurrentMediaSummary() {
+/**
+ * @param {readonly import('./file-manager.js').FileItem[]} playlist
+ * @param {import('./file-manager.js').FileItem | null} currentItem
+ * @param {boolean} presenterAlive
+ * @param {boolean} isPlaying
+ * @param {import('./screens-manager.js').RefinedScreen | null} selectedMonitor
+ */
+function createControlViewModel(playlist, currentItem, presenterAlive, isPlaying, selectedMonitor) {
+    const sessionInactive = !presenterAlive;
+    const currentIndex = currentItemIndex(playlist, currentItem);
+    const isTimeBasedMedia = isTimeBasedMediaItem(currentItem);
+    // Images have no timeline: playback controls are impossible, not just inactive.
+    const transportDisabled = sessionInactive || !isTimeBasedMedia;
+    const playPauseAction = isPlaying ? 'Pausar contenido actual' : 'Reproducir contenido actual';
+
     if (!presenterAlive) {
-        setCurrentMediaState('Sin presentación', 'idle');
-        $currentMediaName.text('Sin presentación activa');
-        $currentMediaMeta.text(`Destino preparado: ${selectedMonitorLabel()}.`);
-        return;
+        return {
+            startDisabled: false,
+            endDisabled: true,
+            blankDisabled: true,
+            previousDisabled: true,
+            nextDisabled: true,
+            rewindDisabled: true,
+            fastForwardDisabled: true,
+            playPauseDisabled: true,
+            playPauseText: isPlaying ? '⏸️' : '▶️',
+            playPauseAction,
+            mediaStateLabel: 'Sin presentación',
+            mediaStateTone: /** @type {'idle'} */ ('idle'),
+            mediaName: 'Sin presentación activa',
+            mediaMeta: `Destino preparado: ${selectedMonitorLabel(selectedMonitor)}.`,
+        };
     }
 
     if (!currentItem) {
-        setCurrentMediaState('Pantalla en blanco', 'blank');
-        $currentMediaName.text('Pantalla en blanco');
-        $currentMediaMeta.text(`Presentador abierto en ${selectedMonitorLabel()}.`);
-        return;
+        return {
+            startDisabled: true,
+            endDisabled: false,
+            blankDisabled: true,
+            previousDisabled: true,
+            nextDisabled: true,
+            rewindDisabled: true,
+            fastForwardDisabled: true,
+            playPauseDisabled: true,
+            playPauseText: isPlaying ? '⏸️' : '▶️',
+            playPauseAction,
+            mediaStateLabel: 'Pantalla en blanco',
+            mediaStateTone: /** @type {'blank'} */ ('blank'),
+            mediaName: 'Pantalla en blanco',
+            mediaMeta: `Presentador abierto en ${selectedMonitorLabel(selectedMonitor)}.`,
+        };
     }
 
     const mediaKind = MEDIA_KIND_LABELS[currentItem.detected] ?? 'Archivo';
     const fileType = fileTypeLabel(currentItem.file);
-    const isTimeBasedMedia = currentItem.detected === 'isVideo' || currentItem.detected === 'isAudio';
 
-    setCurrentMediaState(isPlaying && isTimeBasedMedia ? 'Reproduciendo' : 'En pantalla', 'active');
-    $currentMediaName.text(currentItem.file.name);
-    $currentMediaMeta.text(`${mediaKind} / ${fileType} - ${selectedMonitorLabel()}`);
+    return {
+        startDisabled: true,
+        endDisabled: false,
+        blankDisabled: false,
+        previousDisabled: currentIndex <= 0,
+        nextDisabled: currentIndex === -1 || currentIndex >= playlist.length - 1,
+        rewindDisabled: transportDisabled,
+        fastForwardDisabled: transportDisabled,
+        playPauseDisabled: transportDisabled,
+        playPauseText: isPlaying ? '⏸️' : '▶️',
+        playPauseAction,
+        mediaStateLabel: isPlaying && isTimeBasedMedia ? 'Reproduciendo' : 'En pantalla',
+        mediaStateTone: /** @type {'active'} */ ('active'),
+        mediaName: currentItem.file.name,
+        mediaMeta: `${mediaKind} / ${fileType} - ${selectedMonitorLabel(selectedMonitor)}`,
+    };
 }
 
-function renderControlState() {
-    const sessionInactive = !presenterAlive;
-    const playlist = fileManagerRef?.filesState$.getValue() ?? [];
-    const currentIndex = currentItem ? playlist.indexOf(currentItem) : -1;
-    const isTimeBasedMedia = currentItem?.detected === 'isVideo' || currentItem?.detected === 'isAudio';
-    // Images have no timeline: playback controls are impossible, not just inactive.
-    const transportDisabled = sessionInactive || !isTimeBasedMedia;
-
-    $startPresentationBtn.prop('disabled', presenterAlive);
-    $endPresentationBtn.prop('disabled', sessionInactive);
-    // Already blank (no current item) leaves nothing to blank out.
-    $blankScreenBtn.prop('disabled', sessionInactive || !currentItem);
-    $prevMediaBtn.prop('disabled', sessionInactive || currentIndex <= 0);
-    $nextMediaBtn.prop('disabled', sessionInactive || currentIndex === -1 || currentIndex >= playlist.length - 1);
-    $rewindBtn.prop('disabled', transportDisabled);
-    $fastForwardBtn.prop('disabled', transportDisabled);
-    $playPauseBtn.prop('disabled', transportDisabled);
-    const playPauseAction = isPlaying ? 'Pausar contenido actual' : 'Reproducir contenido actual';
-    $playPauseBtn.text(isPlaying ? '⏸️' : '▶️');
+/**
+ * @param {ReturnType<typeof createControlViewModel>} viewModel
+ */
+function renderControlViewModel(viewModel) {
+    $startPresentationBtn.prop('disabled', viewModel.startDisabled);
+    $endPresentationBtn.prop('disabled', viewModel.endDisabled);
+    $blankScreenBtn.prop('disabled', viewModel.blankDisabled);
+    $prevMediaBtn.prop('disabled', viewModel.previousDisabled);
+    $nextMediaBtn.prop('disabled', viewModel.nextDisabled);
+    $rewindBtn.prop('disabled', viewModel.rewindDisabled);
+    $fastForwardBtn.prop('disabled', viewModel.fastForwardDisabled);
+    $playPauseBtn.prop('disabled', viewModel.playPauseDisabled);
+    $playPauseBtn.text(viewModel.playPauseText);
     $playPauseBtn.attr({
-        'aria-label': playPauseAction,
-        title: playPauseAction,
+        'aria-label': viewModel.playPauseAction,
+        title: viewModel.playPauseAction,
     });
-    renderCurrentMediaSummary();
-    renderPlaylistCurrentHighlight();
+    setCurrentMediaState(viewModel.mediaStateLabel, viewModel.mediaStateTone);
+    $currentMediaName.text(viewModel.mediaName);
+    $currentMediaMeta.text(viewModel.mediaMeta);
 }
 
 /**
  * @param {boolean} nextAlive
  */
 function setPresenterAlive(nextAlive) {
-    if (presenterAlive === nextAlive) {
+    if (presenterAliveSubject.getValue() === nextAlive) {
         return;
     }
 
-    presenterAlive = nextAlive;
-    if (!presenterAlive) {
+    if (!nextAlive) {
         resetLocalState();
         return;
     }
 
-    renderControlState();
+    presenterAliveSubject.next(true);
 }
 
 function resetLocalState() {
     presentationWindow = null;
-    currentItem = null;
-    previousCurrentIndex = 0;
-    isPlaying = false;
-    presenterAlive = false;
+    currentItemSubject.next(null);
+    previousCurrentIndexSubject.next(0);
+    isPlayingSubject.next(false);
+    presenterAliveSubject.next(false);
     resetPlaybackTimeDisplay();
-    renderControlState();
 }
 
 function sendCurrentMediaUpdate() {
     if (!commandChannels) {
         return;
     }
+    const currentItem = currentItemSubject.getValue();
     // Not playing until the presenter reports otherwise (autoplay can be
     // blocked, media can fail to load).
-    isPlaying = false;
+    isPlayingSubject.next(false);
     if (!currentItem) {
         // No current item = blank stage on the presenter.
         commandChannels.updateMediaChannel.send.next(toBlankMediaPayload());
@@ -311,15 +392,18 @@ function sendCurrentMediaUpdate() {
             resetPlaybackTimeDisplay();
         }
     }
-    renderControlState();
 }
 
 function openPresentationWindow() {
     const playlist = fileManagerRef?.filesState$.getValue() ?? [];
+    const currentItem = currentItemSubject.getValue();
+    const previousCurrentIndex = previousCurrentIndexSubject.getValue();
+    const selectedMonitor = selectedMonitorSubject.getValue();
 
     // An empty playlist is fine: the presenter opens on a blank stage.
-    currentItem = resolveCurrentItem(playlist, currentItem, previousCurrentIndex);
-    previousCurrentIndex = currentItem ? playlist.indexOf(currentItem) : 0;
+    const nextCurrentItem = resolveCurrentItem(playlist, currentItem, previousCurrentIndex);
+    currentItemSubject.next(nextCurrentItem);
+    previousCurrentIndexSubject.next(nextCurrentItem ? playlist.indexOf(nextCurrentItem) : 0);
 
     if (isPresenterOpen()) {
         sendCurrentMediaUpdate();
@@ -357,8 +441,9 @@ function closePresentationWindow() {
  */
 function navigate(delta) {
     const playlist = fileManagerRef?.filesState$.getValue() ?? [];
-    currentItem = stepCurrentItem(playlist, currentItem, delta);
-    previousCurrentIndex = currentItem ? playlist.indexOf(currentItem) : 0;
+    const nextCurrentItem = stepCurrentItem(playlist, currentItemSubject.getValue(), delta);
+    currentItemSubject.next(nextCurrentItem);
+    previousCurrentIndexSubject.next(nextCurrentItem ? playlist.indexOf(nextCurrentItem) : 0);
     sendCurrentMediaUpdate();
 }
 
@@ -373,10 +458,10 @@ function showItemAtIndex(index) {
         return;
     }
 
-    currentItem = nextItem;
-    previousCurrentIndex = index;
+    currentItemSubject.next(nextItem);
+    previousCurrentIndexSubject.next(index);
 
-    if (presenterAlive) {
+    if (presenterAliveSubject.getValue()) {
         sendCurrentMediaUpdate();
         return;
     }
@@ -389,20 +474,20 @@ function showItemAtIndex(index) {
  * and a later restart resume near where the presentation left off.
  */
 function blankPresentation() {
-    if (!presenterAlive || !currentItem) {
+    if (!presenterAliveSubject.getValue() || !currentItemSubject.getValue()) {
         return;
     }
-    currentItem = null;
+    currentItemSubject.next(null);
     sendCurrentMediaUpdate();
 }
 
 function togglePlayPause() {
-    if (!commandChannels || !currentItem) {
+    if (!commandChannels || !currentItemSubject.getValue()) {
         return;
     }
     // Send the command only; the button flips when the presenter reports the
     // state actually changed. Re-sending on a fast double click is harmless.
-    if (isPlaying) {
+    if (isPlayingSubject.getValue()) {
         commandChannels.pauseChannel.send.next({});
     } else {
         commandChannels.playChannel.send.next({});
@@ -434,8 +519,7 @@ function initialize(fileManager, screenManager) {
     $fileList = $('#fileList');
 
     screenManager.selectedMonitor$.subscribe(monitor => {
-        selectedMonitor = monitor;
-        renderControlState();
+        selectedMonitorSubject.next(monitor);
     });
 
     interval(PING_INTERVAL_MS)
@@ -453,36 +537,103 @@ function initialize(fileManager, screenManager) {
 
     channels.playbackStateChannel.on.subscribe(/** @param {{ mediaUrl?: unknown, isPlaying?: unknown }} payload */ (payload) => {
         // Ignore reports about a medium we already navigated away from.
-        if (!presenterAlive || !currentItem || payload.mediaUrl !== currentItem.blobURL) {
+        if (!isPlaybackReportForCurrentItem(
+            presenterAliveSubject.getValue(),
+            currentItemSubject.getValue(),
+            payload
+        )) {
             return;
         }
         const reportedPlaying = payload.isPlaying === true;
-        if (reportedPlaying !== isPlaying) {
-            isPlaying = reportedPlaying;
-            renderControlState();
+        if (reportedPlaying !== isPlayingSubject.getValue()) {
+            isPlayingSubject.next(reportedPlaying);
         }
     });
 
     fileManager.filesState$.subscribe(files => {
         // While blank (no current item), playlist edits must not push media
         // onto the presenter — the operator decides what gets shown.
+        const currentItem = currentItemSubject.getValue();
         if (currentItem) {
-            const previousItem = currentItem;
-            currentItem = resolveCurrentItem(files, currentItem, previousCurrentIndex);
-            previousCurrentIndex = currentItem ? files.indexOf(currentItem) : previousCurrentIndex;
-            if (presenterAlive && currentItem !== previousItem) {
+            const previousCurrentIndex = previousCurrentIndexSubject.getValue();
+            const nextCurrentItem = resolveCurrentItem(files, currentItem, previousCurrentIndex);
+            previousCurrentIndexSubject.next(nextCurrentItem
+                ? files.indexOf(nextCurrentItem)
+                : previousCurrentIndex);
+            if (nextCurrentItem !== currentItem) {
+                currentItemSubject.next(nextCurrentItem);
+            }
+            if (presenterAliveSubject.getValue() && nextCurrentItem !== currentItem) {
                 // The shown item was deleted: present its neighbor, or go
                 // blank when the playlist emptied.
                 sendCurrentMediaUpdate();
-                return;
             }
         }
-        if (presenterAlive) {
-            renderControlState();
-        } else {
-            renderPlaylistCurrentHighlight();
-        }
     });
+
+    combineLatest([
+        fileManager.filesState$,
+        currentItemSubject,
+        presenterAliveSubject,
+        isPlayingSubject,
+        selectedMonitorSubject,
+    ])
+        .pipe(
+            map(([playlist, currentItem, presenterAlive, isPlaying, selectedMonitor]) => (
+                createControlViewModel(playlist, currentItem, presenterAlive, isPlaying, selectedMonitor)
+            )),
+            shareReplay(1),
+        )
+        .subscribe(renderControlViewModel);
+
+    combineLatest([
+        fileManager.filesState$,
+        currentItemSubject,
+        presenterAliveSubject,
+        isPlayingSubject,
+    ])
+        .pipe(
+            map(([playlist, currentItem, presenterAlive, isPlaying]) => (
+                createPlaylistRowViewModels(playlist, currentItem, presenterAlive, isPlaying)
+            )),
+            shareReplay(1),
+        )
+        .subscribe(renderPlaylistRows);
+
+    combineLatest([
+        presenterAliveSubject,
+        currentItemSubject,
+    ])
+        .pipe(
+            map(([presenterAlive, currentItem]) => {
+                if (!presenterAlive) {
+                    return {
+                        kind: /** @type {'inactive'} */ ('inactive'),
+                        item: /** @type {import('./file-manager.js').FileItem | null} */ (null),
+                    };
+                }
+                if (!currentItem) {
+                    return {
+                        kind: /** @type {'blank'} */ ('blank'),
+                        item: /** @type {import('./file-manager.js').FileItem | null} */ (null),
+                    };
+                }
+                return {
+                    kind: /** @type {'current'} */ ('current'),
+                    item: currentItem,
+                };
+            }),
+            distinctUntilChanged((previous, current) => (
+                previous.kind === current.kind && previous.item === current.item
+            )),
+            map(state => state.kind === 'current' && state.item
+                ? getPlaylistItemElementById(state.item.id)
+                : null),
+            filter(element => element !== null),
+        )
+        .subscribe(element => {
+            scrollPlaylistItemIntoView(/** @type {HTMLElement} */ (element));
+        });
 
     fileManager.intentToShowFile$.subscribe(index => {
         showItemAtIndex(index);
@@ -497,7 +648,6 @@ function initialize(fileManager, screenManager) {
     $fastForwardBtn.on('click', () => channels.fastForwardChannel.send.next({ seconds: 10 }));
     $playPauseBtn.on('click', togglePlayPause);
     resetPlaybackTimeDisplay();
-    renderControlState();
 }
 
 export default {

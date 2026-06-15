@@ -287,6 +287,13 @@ test('current playlist item smooth-scrolls into view when transport changes curr
     await expect(page.getByTestId('files-list-item')).toHaveCount(18);
     await recordPlaylistScrollIntoViewCalls(page);
 
+    const targetIndex = 10;
+    const targetItem = page.getByTestId('files-list-item').nth(targetIndex);
+    const targetKey = await targetItem.getAttribute('data-key');
+    if (!targetKey) {
+        throw new Error('Expected target playlist item to expose a stable data-key.');
+    }
+
     const popupPromise = page.context().waitForEvent('page');
     await page.getByTestId('action:start-presentation').click();
     const presenter = await popupPromise;
@@ -305,18 +312,20 @@ test('current playlist item smooth-scrolls into view when transport changes curr
         }
     });
 
-    const targetIndex = 10;
     for (let index = 0; index < targetIndex; index += 1) {
         await page.getByTestId('action:next-media').click();
     }
 
-    await expect(page.getByTestId('files-list-item').nth(targetIndex)).toHaveAttribute('data-status', 'current');
-    await expect.poll(async () => page.evaluate(() => {
-        const recorderWindow = /** @type {Window & { __playlistScrollIntoViewCalls?: Array<Record<string, string | null>> }} */ (
-            /** @type {unknown} */ (window)
-        );
-        return recorderWindow.__playlistScrollIntoViewCalls?.at(-1) ?? null;
-    })).toMatchObject({
+    await expect(targetItem).toHaveAttribute('data-status', 'current');
+    await expect.poll(async () => page.evaluate(
+        /** @param {string} expectedKey */
+        (expectedKey) => {
+            const recorderWindow = /** @type {Window & { __playlistScrollIntoViewCalls?: Array<Record<string, string | null>> }} */ (
+                /** @type {unknown} */ (window)
+            );
+            return recorderWindow.__playlistScrollIntoViewCalls?.findLast(call => call.key === expectedKey) ?? null;
+        }, targetKey)).toMatchObject({
+        key: targetKey,
         status: 'current',
         behavior: 'smooth',
         block: 'center',

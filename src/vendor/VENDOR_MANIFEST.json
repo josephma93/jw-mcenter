@@ -44,21 +44,19 @@
       "exports": [
         "BehaviorSubject",
         "Subject",
-        "buffer",
+        "combineLatest",
         "distinctUntilChanged",
         "filter",
-        "from",
         "fromEvent",
         "interval",
         "map",
         "mergeMap",
-        "partition",
         "shareReplay",
         "switchMap",
         "tap",
         "withLatestFrom"
       ],
-      "bytes": 28086,
+      "bytes": 28727,
       "esbuild": {
         "name": "esbuild",
         "version": "0.28.0"
