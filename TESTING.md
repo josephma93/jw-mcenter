@@ -80,7 +80,7 @@ Checklist result:
 Notes / failures:
 ```
 
-For asset-pack-driven media passes, use `test/fixtures/media/public-domain/` as the regression set.
+For asset-pack-driven media passes, use `test/fixtures/media/` as the regression set. Files prefixed with `valid-` should import; files prefixed with `reject-` should not.
 
 ## Known Limits
 
