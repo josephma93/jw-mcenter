@@ -230,11 +230,13 @@ function updateMediaElement(mediaUrl, mediaType) {
     element.addEventListener('loadedmetadata', () => {
       currentMediaDuration = /** @type {HTMLMediaElement} */ (element).duration;
     });
-    for (const readyEvent of ['loadeddata', 'canplay', 'canplaythrough']) {
-      element.addEventListener(readyEvent, () => {
-        tryPlayCurrentElement(element);
-      });
-    }
+    // 'canplay' is the single readiness signal we need: by then the element can
+    // start, and tryPlayCurrentElement is a no-op if autoplay already started
+    // it. Listening to loadeddata/canplaythrough too only fired redundant
+    // play() calls for the same element.
+    element.addEventListener('canplay', () => {
+      tryPlayCurrentElement(element);
+    });
     for (const stateEvent of ['play', 'playing', 'pause', 'ended', 'seeked']) {
       element.addEventListener(stateEvent, () => {
         if (currentMediaElement === element) {

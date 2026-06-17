@@ -88,6 +88,12 @@ export function registerPresenterServiceWorker() {
         return;
     }
 
+    // The presenter registers only to share the precache for offline use. It
+    // deliberately offers no update prompt and never posts SKIP_WAITING: a
+    // waiting service worker stays waiting so a deploy mid-meeting can never
+    // reload a live presentation. The presenter is short-lived (it self-closes
+    // when the control panel does), so it picks up the new worker the next time
+    // it is opened — by then the control panel has already applied the update.
     registerSW({
         immediate: true,
         onRegisterError(/** @type {unknown} */ error) {

@@ -25,10 +25,11 @@ import { clearBlankImage, getBlankImage, setBlankImage } from './config-store.mj
 
 /**
  * The blank image is a static backdrop, not a media file, so it has no business
- * being huge. Capping the size keeps the synchronous read+deflate from freezing
- * the control panel mid-meeting and sidesteps storage-quota failures.
+ * being huge. A 2 MB cap keeps the synchronous read+deflate brief enough not to
+ * freeze the control panel mid-meeting (a full-screen still fits comfortably in
+ * that budget) and sidesteps storage-quota failures.
  */
-const MAX_BLANK_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_BLANK_IMAGE_BYTES = 2 * 1024 * 1024;
 
 /** @type {JQuery<HTMLElement>} */ let $selectBlankImageBtn;
 /** @type {JQuery<HTMLInputElement>} */ let $blankImageInput;
@@ -116,7 +117,7 @@ function toBlankImage(stored) {
 async function handleSelectedFile(file) {
     clearError();
     if (file.size > MAX_BLANK_IMAGE_BYTES) {
-        showError('La imagen supera el límite de 10 MB.');
+        showError('La imagen supera el límite de 2 MB.');
         return;
     }
 
