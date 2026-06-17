@@ -1,15 +1,17 @@
 {
   "name": "jw-mcenter",
   "version": "1.0.0",
-  "description": "Local, browser-only multimedia control center for JW meetings. No build step: the browser runs src/ as written.",
+  "description": "Local, browser-only multimedia control center for JW meetings. Built as a Vite multi-page app with installable offline support.",
   "private": true,
   "scripts": {
-    "start": "portless run --name jw-mcenter -- http-server src -c-1 --silent",
-    "vendor": "node tools/vendor.mjs",
+    "start": "portless run --name jw-mcenter -- vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview",
     "check": "tsc -p tsconfig.json && tsc -p tsconfig.worker.json",
     "check:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "test:unit": "node --test test/unit/*.test.mjs",
-    "test": "npm run check && npm run test:unit && playwright test"
+    "test:artifacts": "node --test test/artifacts/*.test.mjs",
+    "test": "npm run check && npm run test:unit && npm run build && npm run test:artifacts && playwright test"
   },
   "repository": {
     "type": "git",
@@ -20,6 +22,7 @@
     "ejs": "^3.1.10",
     "jquery": "^3.7.1",
     "normalize.css": "^8.0.1",
+    "pako": "^2.1.0",
     "rxjs": "^7.8.2",
     "sortablejs": "^1.15.7"
   },
@@ -28,10 +31,13 @@
     "@types/ejs": "^3.1.5",
     "@types/jquery": "^3.5.34",
     "@types/node": "^25.9.3",
+    "@types/pako": "^2.0.4",
     "@types/sortablejs": "^1.15.9",
-    "esbuild": "^0.28.0",
-    "http-server": "^14.1.1",
     "portless": "^0.14.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vite-plugin-pwa": "^1.3.0",
+    "workbox-core": "^7.4.1",
+    "workbox-precaching": "^7.4.1"
   }
 }

@@ -1,4 +1,5 @@
 // @ts-check
+import $ from 'jquery';
 import {
     BehaviorSubject,
     distinctUntilChanged,
@@ -9,6 +10,7 @@ import {
     switchMap,
     withLatestFrom,
 } from 'rxjs';
+import ejs from './browser-ejs.js';
 
 /**
  * A screen plus the computed geometry the canvas preview needs.

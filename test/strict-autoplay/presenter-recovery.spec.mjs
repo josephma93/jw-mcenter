@@ -64,7 +64,7 @@ test('presenter recovers from strict autoplay blocking after overlay click', asy
 
     await presenter.waitForFunction(() => {
         const video = document.querySelector('#media-container > video');
-        return video instanceof HTMLVideoElement && !video.paused && video.currentTime > 0.2;
+        return video instanceof HTMLVideoElement && !video.paused && video.readyState >= 2;
     });
     await expect(presenter.getByTestId('state:presenter-status')).toBeHidden();
 

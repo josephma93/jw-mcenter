@@ -53,7 +53,7 @@ export { ACTION_CODES } from './shared-worker-bus.mjs';
  * @returns {SharedWorkerRxBridge} An object with distinct channels for each action code.
  */
 export function initSharedWorkerRxBridge() {
-    const worker = new SharedWorker('./js/shared-worker.mjs', {
+    const worker = new SharedWorker(new URL('./shared-worker.mjs', import.meta.url), {
         type: 'module',
         name: 'presenterWindowController'
     });

@@ -1,28 +1,30 @@
 # Testing and Manual Acceptance
 
-## Local Gates
+## Local gates
 
-Prerequisites:
+Prerequisitos:
 
-- Chrome 142 or newer. The local Chrome channel is used for Playwright, and `--screen-info` requires Chrome 142+.
-- Dependencies installed with `npm install` or `npm ci`.
-- No CI is configured. These gates are local convention and must be run before a release or handoff.
+- Chrome 142 o más reciente.
+- Dependencias instaladas con `npm install` o `npm ci`.
+- Sin CI. La validación sigue siendo local.
 
-Run:
+Ejecuta:
 
 ```sh
 npm test
 ```
 
-The `test` script must run all of these explicitly:
+Eso debe correr explícitamente:
 
 ```sh
 npm run check
 npm run test:unit
+npm run build
+npm run test:artifacts
 playwright test
 ```
 
-Useful focused checks:
+Checks enfocados:
 
 ```sh
 npx playwright test --project=smoke
@@ -30,28 +32,58 @@ npx playwright test --project=multiscreen
 npx playwright test --project=strict-autoplay
 ```
 
-## Manual Pre-Meeting Checklist
+## Qué valida cada capa
 
-Record one manual pass on real dual-monitor or projector-like hardware before treating the POC as accepted.
+- `check`: JS con `@ts-check`, JSDoc, shared worker y service worker.
+- `test:unit`: lógica pura y utilidades.
+- `build`: genera `dist/index.html`, `dist/presentation.html`, assets, íconos,
+  `manifest.json` y `sw.js`.
+- `test:artifacts`: falla si falta un artefacto obligatorio o si aparece
+  `.DS_Store` en `dist/`.
+- Playwright: corre contra `vite preview`, incluyendo cobertura offline.
 
-- Chrome version is 142 or newer.
-- The venue laptop detects the projector or secondary monitor with the expected EDID, resolution, scaling, and orientation.
-- The control panel remains on the operator screen.
-- The presenter opens on the physical secondary display.
-- Fullscreen works on the secondary display.
-- A 1080p video plays smoothly on the venue laptop.
-- Audio media advances and is controllable from the panel.
-- Image media displays without cropping.
-- Previous/next navigation between media feels under 1 second.
-- Play/pause, rewind 10s, and fast-forward 10s work during video playback.
-- Ending the presentation closes the presenter window and resets panel controls.
-- Closing the presenter window updates panel controls.
-- Closing the control panel causes the presenter to close within 8 seconds.
-- OS display reconfiguration during a presentation is tested and noted.
+## Cobertura offline automatizada
 
-## Manual Acceptance Record
+- El panel de control arranca offline después de que el service worker toma
+  control.
+- `/presentation.html` arranca offline después de que el service worker toma
+  control.
+- El flujo control → presentador sigue funcionando offline, incluyendo el
+  SharedWorker y el envío de comandos entre ventanas.
 
-Use this template for the hardware pass.
+## Manual update-flow check
+
+Esto no debe omitirse antes de dar por bueno el comportamiento PWA:
+
+1. Abre el panel y el presentador.
+2. Instala una nueva versión del build.
+3. Verifica que el panel muestre aviso de actualización.
+4. Verifica que **ninguna** ventana se recargue sola durante la presentación.
+5. Acepta la actualización desde el panel.
+6. Verifica que recién ahí se recargue el panel.
+
+## Manual pre-meeting checklist
+
+Registrar una pasada manual en hardware real de doble monitor o proyector.
+
+- Chrome 142 o más reciente.
+- El portátil detecta el proyector o monitor secundario con resolución,
+  orientación y escala esperadas.
+- El panel de control permanece en la pantalla del operador.
+- El presentador abre en la pantalla física secundaria.
+- Fullscreen funciona en la pantalla secundaria.
+- Un video 1080p se reproduce fluido.
+- El audio es controlable desde el panel.
+- Las imágenes se muestran sin recorte.
+- Navegar entre medios se siente menor a 1 segundo.
+- Play/pause, rewind 10s y fast-forward 10s funcionan.
+- Terminar la presentación cierra la ventana del presentador.
+- Cerrar el presentador actualiza el panel.
+- Cerrar el panel hace que el presentador cierre en menos de 8 segundos.
+- Reconfigurar pantallas a nivel OS durante la presentación queda probado y anotado.
+- El aviso de actualización no fuerza reload durante una reunión.
+
+## Manual acceptance record
 
 ```md
 Date:
@@ -76,14 +108,15 @@ Checklist result:
 - Presenter close updates panel:
 - Panel close kills presenter within 8s:
 - OS display reconfiguration:
+- Update prompt waits for operator acceptance:
 
 Notes / failures:
 ```
 
-For asset-pack-driven media passes, use `test/fixtures/media/` as the regression set. Files prefixed with `valid-` should import; files prefixed with `reject-` should not.
+## Known limits
 
-## Known Limits
-
-- The service worker remains parked and is not registered. Active offline/PWA behavior is post-POC work.
-- Multi-screen hotplug handling beyond the manual reconfiguration check is post-POC work.
-- Browser autoplay behavior varies by policy. The strict-autoplay automated test uses a deterministic first-play rejection to exercise the recovery path while preserving the real control-panel/presenter flow.
+- La persistencia offline cubre la shell de la app y assets públicos, no una
+  biblioteca durable de medios seleccionados por el usuario.
+- La imagen configurada para “pantalla en blanco” sí persiste en IndexedDB.
+- El hotplug avanzado de pantallas sigue dependiendo de validación manual en
+  hardware real.

@@ -105,6 +105,20 @@ test('blank payload travels on the update_media shape with no URL', () => {
     });
 });
 
+test('blank payload renders the configured image when one is set', () => {
+    assert.deepEqual(toBlankMediaPayload('blob:blank-image'), {
+        mediaUrl: 'blob:blank-image',
+        mediaType: 'image',
+    });
+});
+
+test('blank payload falls back to a blank stage for an empty image URL', () => {
+    assert.deepEqual(toBlankMediaPayload(''), {
+        mediaUrl: '',
+        mediaType: 'blank',
+    });
+});
+
 test('move item preserves wraparound swap semantics', () => {
     const alpha = item('alpha');
     const beta = item('beta');

@@ -1,3 +1,5 @@
+@import "normalize.css";
+
 *,
 *::before,
 *::after {
@@ -32,6 +34,33 @@ body {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background-color: var(--bg);
     color: var(--text);
+}
+
+.pwa-prompt {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 1200;
+    width: min(360px, calc(100vw - 32px));
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+}
+
+.pwa-prompt[hidden] {
+    display: none !important;
+}
+
+.pwa-prompt p {
+    margin: 0;
+    line-height: 1.45;
+}
+
+.pwa-prompt-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 button,
@@ -227,12 +256,44 @@ select {
     pointer-events: auto;
 }
 
+.monitor-flyout {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .monitor-flyout-toggle {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     border-color: var(--border);
     font-weight: 700;
+}
+
+.config-setting h3 {
+    margin: 0 0 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.config-blank-image-preview {
+    display: block;
+    max-width: 100%;
+    max-height: 200px;
+    margin: 0 0 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    object-fit: contain;
+}
+
+.config-error {
+    color: var(--danger);
+    margin: 0 0 12px;
+}
+
+.config-setting-actions {
+    display: flex;
+    gap: 8px;
 }
 
 .monitor-flyout-panel {

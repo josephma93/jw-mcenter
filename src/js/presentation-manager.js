@@ -7,6 +7,7 @@
  * control panel kills the ping interval, which makes the presenter shut down
  * on its own — the master-slave dependency the SRS requires.
  */
+import $ from 'jquery';
 import { initSharedWorkerRxBridge } from './shared-worker-bridge.js';
 import {
     currentItemIndex,
@@ -53,6 +54,12 @@ const isPlayingSubject = new BehaviorSubject(false);
 const presenterAliveSubject = new BehaviorSubject(false);
 /** @type {ReturnType<typeof initSharedWorkerRxBridge> | null} */
 let commandChannels = null;
+/**
+ * Object URL of the configured blank-screen image, or null when none is set.
+ * Shown wherever the presenter would otherwise be blank.
+ * @type {string | null}
+ */
+let blankImageUrl = null;
 /** @type {JQuery<HTMLElement>} */ let $startPresentationBtn;
 /** @type {JQuery<HTMLElement>} */ let $endPresentationBtn;
 /** @type {JQuery<HTMLElement>} */ let $blankScreenBtn;
@@ -382,8 +389,8 @@ function sendCurrentMediaUpdate() {
     // blocked, media can fail to load).
     isPlayingSubject.next(false);
     if (!currentItem) {
-        // No current item = blank stage on the presenter.
-        commandChannels.updateMediaChannel.send.next(toBlankMediaPayload());
+        // No current item = blank stage, or the configured blank-screen image.
+        commandChannels.updateMediaChannel.send.next(toBlankMediaPayload(blankImageUrl));
         resetPlaybackTimeDisplay();
     } else {
         commandChannels.updateMediaChannel.send.next(toUpdateMediaPayload(currentItem));
@@ -496,8 +503,9 @@ function togglePlayPause() {
 /**
  * @param {import('./file-manager.js')['default']} fileManager
  * @param {import('./screens-manager.js')['default']} screenManager
+ * @param {import('./config-manager.js')['default']} configManager
  */
-function initialize(fileManager, screenManager) {
+function initialize(fileManager, screenManager, configManager) {
     const channels = initSharedWorkerRxBridge();
     commandChannels = channels;
     fileManagerRef = fileManager;
@@ -521,6 +529,14 @@ function initialize(fileManager, screenManager) {
         selectedMonitorSubject.next(monitor);
     });
 
+    configManager.blankImage$.subscribe(blankImage => {
+        blankImageUrl = blankImage ? blankImage.url : null;
+        // Reflect the change live when the presenter is currently blank.
+        if (presenterAliveSubject.getValue() && !currentItemSubject.getValue()) {
+            sendCurrentMediaUpdate();
+        }
+    });
+
     interval(PING_INTERVAL_MS)
         .subscribe(() => {
             const alive = isPresenterOpen();
@@ -532,6 +548,18 @@ function initialize(fileManager, screenManager) {
 
     channels.mediaTimeUpdateChannel.on.subscribe(/** @param {{ currentTime?: unknown, duration?: unknown }} payload */ (payload) => {
         renderPlaybackTimeUpdate(payload);
+
+        const currentTime = Number(payload.currentTime);
+        const duration = Number(payload.duration);
+        if (
+            isPlayingSubject.getValue() &&
+            Number.isFinite(currentTime) &&
+            Number.isFinite(duration) &&
+            duration > 0 &&
+            currentTime >= duration - 0.05
+        ) {
+            isPlayingSubject.next(false);
+        }
     });
 
     channels.playbackStateChannel.on.subscribe(/** @param {{ mediaUrl?: unknown, isPlaying?: unknown }} payload */ (payload) => {

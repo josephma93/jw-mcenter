@@ -170,7 +170,7 @@ export function createPlaywrightDevServer(port = resolvePlaywrightPort()) {
     return {
         baseURL: `http://127.0.0.1:${port}`,
         webServer: {
-            command: `node node_modules/http-server/bin/http-server src -p ${port} -a 127.0.0.1 -c-1 --silent`,
+            command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${port} --strictPort`,
             port,
             reuseExistingServer: true,
         },

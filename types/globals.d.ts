@@ -1,10 +1,30 @@
 // Ambient declarations the checker can't get from any package.
 // Checker-only — never served or executed.
 
-// EJS is loaded as a classic script (index.html) and used as a global.
-// The signatures come from @types/ejs; this only declares that the module's
-// API exists as `window.ejs`.
-declare const ejs: typeof import('ejs');
+declare module 'ejs/ejs.min.js' {
+    const ejs: typeof import('ejs');
+    export default ejs;
+}
+
+declare module 'virtual:pwa-register' {
+    interface RegisterSWOptions {
+        immediate?: boolean;
+        onNeedReload?: () => void;
+        onNeedRefresh?: () => void;
+        onOfflineReady?: () => void;
+        onRegisteredSW?: (swScriptUrl: string, registration: ServiceWorkerRegistration | undefined) => void;
+        onRegisterError?: (error: unknown) => void;
+    }
+
+    export function registerSW(options?: RegisterSWOptions): (reloadPage?: boolean) => Promise<void>;
+}
+
+interface WorkerGlobalScope {
+    __WB_MANIFEST: Array<{
+        url: string;
+        revision?: string | null;
+    }>;
+}
 
 // Window Management API (Chromium-only). Not in TypeScript's lib.dom (which
 // only ships broadly-supported standards) and no @types package exists for

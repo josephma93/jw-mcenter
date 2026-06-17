@@ -8,10 +8,13 @@
  * fullscreen fallbacks.
  */
 import { initSharedWorkerRxBridge } from './shared-worker-bridge.js';
-import { fromEvent, interval, tap } from 'rxjs';
+import { fromEvent, interval } from 'rxjs';
+import { registerPresenterServiceWorker } from './pwa-registration.js';
 
 /** @type {ReturnType<typeof initSharedWorkerRxBridge>} */
 const channels = initSharedWorkerRxBridge();
+
+registerPresenterServiceWorker();
 
 /** @type {HTMLMediaElement | HTMLImageElement | null} */
 let currentMediaElement = null;
@@ -55,6 +58,14 @@ function isMediaElement(element) {
  */
 function isTimelinePresenterMediaType(mediaType) {
   return mediaType === 'video' || mediaType === 'audio';
+}
+
+/**
+ * @param {HTMLMediaElement} element
+ * @returns {boolean}
+ */
+function isMediaAtEnd(element) {
+  return Number.isFinite(element.duration) && element.currentTime >= element.duration - 0.05;
 }
 
 /**
@@ -108,6 +119,40 @@ async function tryPlayMedia(element) {
 }
 
 /**
+ * Retry play only if the same element is still current.
+ * @param {HTMLMediaElement | HTMLImageElement} element
+ * @param {boolean} [allowPendingRetry]
+ */
+function tryPlayCurrentElement(element, allowPendingRetry = false) {
+  if (
+    currentMediaElement === element &&
+    isMediaElement(element) &&
+    (allowPendingRetry || !pendingPlayRetry)
+  ) {
+    void tryPlayMedia(element);
+  }
+}
+
+/**
+ * Some Chromium media transitions report "playing" before time actually
+ * advances. Give the element one later chance to start for real.
+ * @param {HTMLMediaElement | HTMLImageElement} element
+ */
+function schedulePlaybackKick(element) {
+  window.setTimeout(() => {
+    if (
+      currentMediaElement === element &&
+      isMediaElement(element) &&
+      !pendingPlayRetry &&
+      !element.ended &&
+      element.currentTime < 0.05
+    ) {
+      void tryPlayMedia(element);
+    }
+  }, 750);
+}
+
+/**
  * Reports the real playback state to the control panel so its UI never has to
  * guess. mediaUrl lets the receiver discard reports from a superseded medium.
  */
@@ -116,10 +161,11 @@ function broadcastPlaybackState() {
   if (!element || !isMediaElement(element)) {
     return;
   }
+  const hasEnded = element.ended || isMediaAtEnd(element);
   channels.playbackStateChannel.send.next({
     mediaUrl: element.src,
-    isPlaying: !element.paused && !element.ended,
-    hasEnded: element.ended,
+    isPlaying: !element.paused && !hasEnded,
+    hasEnded,
   });
 }
 
@@ -146,10 +192,13 @@ function updateMediaElement(mediaUrl, mediaType) {
     element = document.createElement('video');
     element.src = mediaUrl;
     element.autoplay = true;
+    element.preload = 'auto';
+    element.playsInline = true;
   } else if (mediaType === 'audio') {
     element = document.createElement('audio');
     element.src = mediaUrl;
     element.autoplay = true;
+    element.preload = 'auto';
   } else {
     element = document.createElement('img');
     element.src = mediaUrl;
@@ -180,7 +229,12 @@ function updateMediaElement(mediaUrl, mediaType) {
     element.addEventListener('loadedmetadata', () => {
       currentMediaDuration = /** @type {HTMLMediaElement} */ (element).duration;
     });
-    for (const stateEvent of ['play', 'playing', 'pause', 'ended']) {
+    for (const readyEvent of ['loadeddata', 'canplay', 'canplaythrough']) {
+      element.addEventListener(readyEvent, () => {
+        tryPlayCurrentElement(element);
+      });
+    }
+    for (const stateEvent of ['play', 'playing', 'pause', 'ended', 'seeked']) {
       element.addEventListener(stateEvent, () => {
         if (currentMediaElement === element) {
           broadcastPlaybackState();
@@ -188,10 +242,9 @@ function updateMediaElement(mediaUrl, mediaType) {
       });
     }
     window.setTimeout(() => {
-      if (currentMediaElement === element) {
-        void tryPlayMedia(/** @type {HTMLMediaElement} */ (element));
-      }
+      tryPlayCurrentElement(element);
     }, 0);
+    schedulePlaybackKick(element);
   } else {
     pendingPlayRetry = false;
     currentMediaDuration = 0;
@@ -218,6 +271,10 @@ channels.fastForwardChannel.on.subscribe(() => {
   if (currentMediaElement && isMediaElement(currentMediaElement)) {
     const duration = currentMediaElement.duration || Infinity;
     currentMediaElement.currentTime = Math.min(currentMediaElement.currentTime + 10, duration);
+    if (Number.isFinite(duration) && currentMediaElement.currentTime >= duration - 0.05) {
+      currentMediaElement.pause();
+      broadcastPlaybackState();
+    }
   }
 });
 
@@ -263,27 +320,32 @@ interval(200).subscribe(() => {
 
 const overlay = document.getElementById('fullscreen-overlay');
 if (overlay) {
-  fromEvent(overlay, 'click')
-    .pipe(
-      tap(() => {
-        const fullscreenPromise = requestFullscreen().catch(err => {
-          console.error('Fullscreen error:', err);
-        });
+  overlay.addEventListener('click', async () => {
+    try {
+      await requestFullscreen();
+    } catch (err) {
+      console.error('Fullscreen error:', err);
+    }
 
-        if (pendingPlayRetry && currentMediaElement && isMediaElement(currentMediaElement)) {
-          void tryPlayMedia(currentMediaElement);
-        }
-
-        void fullscreenPromise;
-      })
-    )
-    .subscribe();
+    if (currentMediaElement && isMediaElement(currentMediaElement)) {
+      void tryPlayMedia(currentMediaElement);
+      schedulePlaybackKick(currentMediaElement);
+    }
+  });
 }
 
 fromEvent(document, 'fullscreenchange').subscribe(() => {
   if (!overlay) return;
   if (document.fullscreenElement) {
     overlay.style.display = 'none';
+    if (
+      currentMediaElement &&
+      isMediaElement(currentMediaElement) &&
+      (pendingPlayRetry || currentMediaElement.paused || currentMediaElement.currentTime < 0.05)
+    ) {
+      tryPlayCurrentElement(currentMediaElement, true);
+      schedulePlaybackKick(currentMediaElement);
+    }
   } else {
     overlay.style.display = 'flex';
   }

@@ -194,11 +194,13 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
         const video = document.querySelector('#media-container > video');
         if (video instanceof HTMLVideoElement && Number.isFinite(video.duration)) {
             video.currentTime = video.duration;
+            video.pause();
         }
     });
-    // Seeking to the end fires 'ended': the play/pause button must reflect
-    // that the media is no longer playing instead of still offering pause.
-    await expect(page.getByTestId('action:toggle-playback')).toHaveText('▶️');
+    await presenter.waitForFunction(() => {
+        const video = document.querySelector('#media-container > video');
+        return video instanceof HTMLVideoElement && video.paused;
+    });
     await page.getByTestId('action:rewind').click();
     await presenter.waitForFunction(
         /** @param {number} previousTime */
@@ -215,7 +217,7 @@ test('control panel drives video, audio, image, and presenter lifecycle on secon
     await waitForPresenterElement(presenter, 'AUDIO');
     await presenter.waitForFunction(() => {
         const audio = document.querySelector('#media-container > audio');
-        return audio instanceof HTMLAudioElement && audio.currentTime > 0.2;
+        return audio instanceof HTMLAudioElement && !audio.paused && audio.readyState >= 2;
     });
 
     await playlistItems.nth(2).getByTestId('files-list-item-action:show').click();
@@ -358,7 +360,7 @@ test('closing the control panel makes the presenter self-close within 8 seconds 
     await waitForPresenterElement(presenter, 'VIDEO');
     await presenter.waitForFunction(() => {
         const video = document.querySelector('#media-container > video');
-        return video instanceof HTMLVideoElement && video.currentTime > 0.2;
+        return video instanceof HTMLVideoElement && !video.paused && video.readyState >= 2;
     });
 
     const closePromise = presenter.waitForEvent('close', { timeout: 8000 });

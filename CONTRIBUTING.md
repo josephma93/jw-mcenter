@@ -1,103 +1,101 @@
 # Contributing / Developer Guide
 
-## Philosophy: no build step
+## Filosofía actual
 
-**The browser runs exactly what you write.** Edit a file under `src/`, reload
-the browser, done. There is no compiler, no bundler, no transpiler, and none
-may be introduced. npm exists here only to download dependencies and run tests.
+No hay framework, pero sí hay build. La barra técnica ahora es esta:
 
-The rules that make this work:
-
-1. **App code is ES modules.** Every file in `src/js/` uses `import`/`export`
-   with **relative paths including the `.js` extension**.
-2. **Bare specifiers resolve via the import map.** `import { ... } from 'rxjs'`
-   and `import Sortable from 'sortablejs'`
-   work because `index.html` and `presentation.html` declare an import map
-   pointing bare imports at files in `src/vendor/`. If you add a page that uses
-   app modules, copy the relevant import map entries into it.
-3. **Worker code uses relative imports only.** Import maps apply to documents,
-   not workers — `src/js/shared-worker.mjs` cannot use bare specifiers.
-4. **Third-party code is vendored, never hotlinked.** No CDN `<script>` tags:
-   the app must work fully offline. `src/vendor/` is committed.
-5. **Classic-script exceptions:** jQuery and EJS load as plain
-   `<script>` tags providing globals (`$`, `ejs`). They are the documented
-   legacy exception; everything else, including SortableJS, is ESM.
-6. **Type-checked JavaScript — hard requirement.** Every `.js`/`.mjs` file
-   starts with `// @ts-check` and carries JSDoc annotations (typedefs for
-   shared shapes, `@param`/`@returns` on functions, `@type` on module-level
-   state). `npm run check` runs `tsc --noEmit` over everything and must pass
-   with zero errors; it runs automatically before `npm test`. This is a
-   *checker*, never a compiler — the browser still runs exactly what you
-   wrote. Ambient types for the vendored globals and for Chromium-only APIs
-   missing from TypeScript's lib.dom live in `types/globals.d.ts`; the
-   SharedWorker file is checked against the worker lib via
-   `tsconfig.worker.json`. Known gap: the inline module script in
-   `presentation.html` can't be checked by tsc.
+1. El código de aplicación sigue siendo JS con `// @ts-check` y JSDoc.
+2. Vite empaqueta la app como **MPA**, no como SPA.
+3. Las dependencias del navegador salen de npm y del grafo de módulos; no se
+   vendorizan en `src/vendor/`.
+4. La PWA usa `vite-plugin-pwa` con `injectManifest`, porque el proyecto
+   necesita controlar cuándo aplicar una actualización.
+5. Todo debe seguir funcionando offline una vez instalado el service worker.
+6. `dist/` debe ser determinista y auditable.
 
 ## Setup
 
 ```sh
-nvm use          # Node version is pinned in .nvmrc
+nvm use
 npm install
 ```
 
-## Running the app
+## Correr la app
 
 ```sh
-npm start      # → https://jw-mcenter.localhost on main
+npm start
 ```
 
-`npm start` runs [portless](https://portless.sh/), which starts a plain static
-server over `src/` behind a stable named URL. In linked git worktrees, Portless
-prepends the branch-derived worktree prefix, so a branch like
-`orchestrator/T-001-playwright-projects` serves at
-`https://t-001-playwright-projects.jw-mcenter.localhost` instead of colliding
-with `main`. The app needs a secure context (`getScreenDetails`, SharedWorker),
-and both `https://*.localhost` and plain `localhost` qualify.
+`npm start` ejecuta Vite detrás de [portless](https://portless.sh/) para dar
+HTTPS y URL estable (`https://jw-mcenter.localhost` en `main`; en worktrees,
+Portless antepone el prefijo derivado de la rama).
 
-One-time setup on a new machine (portless binds port 443 and installs a local
-CA, both need elevation once):
+One-time setup en una máquina nueva:
 
 ```sh
-sudo npx portless proxy start --https   # or: npx portless proxy start --port 1355 --https (no sudo; URL gets :1355)
-npx portless trust                      # trust the local CA so the browser shows no warning
+sudo npx portless proxy start --https
+npx portless trust
 ```
 
-Playwright also avoids global port collisions. By default, each git worktree is
-assigned a deterministic local test port starting at `4317`; set
-`PLAYWRIGHT_PORT=xxxx` only when you need to override that mapping.
+El contexto seguro importa: `getScreenDetails()` y `SharedWorker` lo exigen.
 
-The app is Chromium-only by design (see SRS §2.4).
+## Reglas de código
 
-## Commands
+### Módulos
+
+- Mantén imports explícitos con extensión para módulos internos.
+- Si un asset o worker debe pasar por Vite, usa `new URL(..., import.meta.url)`.
+- No reintroduzcas import maps ni globals vendorizados.
+
+### PWA
+
+- El service worker fuente vive en `src/js/sw.js`.
+- La configuración PWA vive en `vite.config.mjs`.
+- Las actualizaciones deben seguir siendo conservadoras:
+  el panel avisa, el operador decide, recién ahí se recarga.
+- No agregues fallback SPA ciego. `/` y `/presentation.html` son páginas
+  distintas y deben seguir siéndolo offline.
+
+### Assets públicos
+
+- Iconos y otros assets públicos estables van en `src/public/`.
+- No dejes `.DS_Store` en assets ni en `dist/`.
+
+### Tipado
+
+- `npm run check` debe pasar sin errores.
+- `tsconfig.worker.json` cubre el shared worker y el service worker.
+- Los tipos ambient para APIs Chromium-only y módulos virtuales viven en
+  `types/globals.d.ts`.
+
+## Comandos
 
 | Command | What it does |
 |---|---|
-| `npm start` | Serve the app through the worktree-aware Portless wrapper |
-| `npm run check` | Type-checks all JS via `tsc --noEmit` (`@ts-check` + JSDoc) — must pass with zero errors |
-| `npm run check:watch` | Same check, continuously on every save — IDE-free live feedback in a terminal (app config; the worker file is covered by `npm run check`) |
-| `npm test` | Runs `npm run check`, `npm run test:unit`, then all Playwright projects |
-| `npm run vendor` | Regenerates `src/vendor/` from `node_modules` — run only when upgrading a dependency, commit the result |
-
-About `npm run vendor`: it copies browser-ready dist files, except rxjs, which
-ships extensionless imports browsers can't resolve. That package is bundled into
-a curated, minified ESM file with esbuild, using only the runtime symbols
-imported from `src/js/`. The script writes `src/vendor/VENDOR_MANIFEST.json` so
-dependency provenance and bundle size stay auditable. This runs only on
-dependency upgrades; app code is never processed by any tool.
+| `npm start` | Vite dev server detrás de Portless |
+| `npm run check` | Typecheck de JS/JSDoc (`tsc --noEmit`) |
+| `npm run check:watch` | Typecheck continuo |
+| `npm run build` | Genera `dist/` con Vite y PWA |
+| `npm run preview` | Sirve `dist/` |
+| `npm run test:unit` | Pruebas unitarias de Node |
+| `npm run test:artifacts` | Verifica artefactos obligatorios en `dist/` |
+| `npm test` | `check` + unit + build + artifacts + Playwright |
 
 ## Testing
 
-`npm test` must pass before committing. The smoke tests exist because the app
-is one ES module graph: a single bad import silently breaks *everything*, and
-that exact failure once sat unnoticed on `main`.
+Playwright corre contra `vite preview`, no contra `src/` crudo. Eso importa
+porque el comportamiento offline y el service worker solo son reales en el
+build de producción.
+
+Los puertos de Playwright siguen siendo deterministas por worktree. Si hace
+falta, sobrescribe con `PLAYWRIGHT_PORT=xxxx`.
 
 ## Layout
 
-```
-src/        the app — this is the web root
-src/vendor/ committed third-party files (generated by npm run vendor)
-sandbox/    experiments and POCs, not wired into the app
-test/       Playwright smoke tests
-tools/      dev-only scripts (vendoring)
+```text
+src/         app fuente
+src/public/  assets públicos estables
+dist/        salida de producción
+sandbox/     experimentos no integrados
+test/        unit + artifacts + Playwright
 ```

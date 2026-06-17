@@ -170,9 +170,21 @@ export function toUpdateMediaPayload(item) {
 /**
  * Blank goes through the same stateful update_media channel so a presenter
  * that (re)connects replays "blank" instead of resurrecting older media.
+ *
+ * When a blank-screen image is configured it is shown wherever the presenter
+ * would otherwise be empty: the "blank" state becomes a plain image rendered
+ * from the configured object URL. An empty/missing URL falls back to a truly
+ * blank stage.
+ * @param {string | null} [blankImageUrl]
  * @returns {UpdateMediaPayload}
  */
-export function toBlankMediaPayload() {
+export function toBlankMediaPayload(blankImageUrl) {
+    if (blankImageUrl) {
+        return {
+            mediaUrl: blankImageUrl,
+            mediaType: 'image',
+        };
+    }
     return {
         mediaUrl: '',
         mediaType: 'blank',

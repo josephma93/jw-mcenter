@@ -1,4 +1,5 @@
 // @ts-check
+import $ from 'jquery';
 import {
     BehaviorSubject,
     Subject,
@@ -8,6 +9,7 @@ import {
     tap,
 } from 'rxjs';
 import Sortable from 'sortablejs';
+import ejs from './browser-ejs.js';
 import {
     IS_AUDIO,
     IS_IMAGE,

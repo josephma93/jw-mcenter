@@ -56,6 +56,6 @@ test('Playwright server config uses the selected port consistently', () => {
     const devServer = createPlaywrightDevServer(DEFAULT_PLAYWRIGHT_PORT + 7);
     assert.equal(devServer.baseURL, `http://127.0.0.1:${DEFAULT_PLAYWRIGHT_PORT + 7}`);
     assert.equal(devServer.webServer.port, DEFAULT_PLAYWRIGHT_PORT + 7);
-    assert.match(devServer.webServer.command, /http-server src -p 4324 -a 127\.0\.0\.1/);
+    assert.match(devServer.webServer.command, /npm run build && npm run preview -- --host 127\.0\.0\.1 --port 4324 --strictPort/);
     assert.equal(devServer.webServer.reuseExistingServer, true);
 });

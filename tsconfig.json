@@ -21,6 +21,7 @@
     "playwright.config.mjs"
   ],
   "exclude": [
-    "src/js/shared-worker.mjs"
+    "src/js/shared-worker.mjs",
+    "src/js/sw.js"
   ]
 }

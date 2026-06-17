@@ -1,47 +1,80 @@
 # Jehovah Witnesses Multimedia Center
 
-## Propósito del Proyecto
+Aplicación web local para reuniones de Testigos de Jehová. Mantiene la
+arquitectura sin framework y opera con dos entrypoints:
 
-Este proyecto es una aplicación web local diseñada específicamente para la comunidad de Testigos de Jehová, con el propósito de facilitar la presentación de contenido multimedia durante reuniones, asambleas u otros eventos religiosos. La aplicación permite gestionar y mostrar diversos tipos de medios (imágenes, videos y audio) a través de varios monitores o pantallas.
+- `/` → panel de control
+- `/presentation.html` → ventana del presentador
 
-## Características Principales
+## Estado actual
 
-1. **Gestión de Múltiples Pantallas**: Permite detectar y utilizar varias pantallas o monitores conectados al dispositivo, distinguiendo entre la pantalla primaria y secundarias.
+- Vite construye una app multipágina desde `src/` hacia `dist/`.
+- Las dependencias del navegador salen de npm; no hay CDNs.
+- La app registra una PWA real con service worker generado mediante
+  `vite-plugin-pwa` en modo `injectManifest`.
+- El panel de control muestra aviso de “offline listo” y aviso de actualización.
+  No recarga durante una reunión hasta que el operador acepta.
+- La ventana del presentador se registra pasivamente; no fuerza recargas.
 
-2. **Biblioteca de Medios**: Interfaz para subir, organizar y gestionar archivos multimedia (imágenes, videos, audio).
+## Restricciones reales
 
-3. **Controles de Presentación**: Funcionalidades para iniciar/detener presentaciones, navegar entre medios (anterior/siguiente) y controlar la reproducción de medios (play/pausa, avance rápido, retroceso).
+- Chromium-only. El flujo depende de `getScreenDetails()` y `SharedWorker`.
+- Local-first. Todo corre en cliente.
+- `dist/` es el artefacto canónico de producción.
+- La app funciona offline después de instalar el service worker.
+- **No** se promete persistencia offline de medios seleccionados por el usuario:
+  esos archivos siguen viviendo como blob URLs de la sesión actual, salvo la
+  imagen configurada para “pantalla en blanco”, que sí se guarda en IndexedDB.
 
-4. **Modo Pantalla Completa**: Capacidad para mostrar el contenido en pantalla completa, optimizando la experiencia visual.
+## Stack
 
-5. **Comunicación entre Ventanas**: Implementa un sistema de comunicación entre la ventana de control y la ventana de presentación mediante SharedWorker y RxJS.
+- HTML, CSS y JavaScript con `@ts-check` + JSDoc
+- Vite en modo MPA
+- `vite-plugin-pwa` + Workbox (`injectManifest`)
+- jQuery, RxJS, SortableJS, Pako, EJS
+- Portless para HTTPS local con URL estable
+- Playwright contra `vite preview`
 
-6. **Interfaz de Usuario Intuitiva**: Panel de control con vista previa de monitores, lista de medios y controles de presentación.
+## Estructura
 
-7. **Ejecución Local**: Las dependencias del navegador están vendorizadas en el repositorio. La instalación PWA y el modo offline activo quedan para una fase posterior; el service worker existe pero no está registrado.
+- `src/index.html`: panel de control
+- `src/presentation.html`: ventana del presentador
+- `src/js/`: lógica de aplicación, shared worker y service worker fuente
+- `src/public/`: assets públicos estables (iconos)
+- `dist/`: salida de build
+- `test/`: unit, artifacts y Playwright
+- `sandbox/`: experimentos fuera del flujo principal
 
-## Tecnologías Utilizadas
+## Comandos
 
-- **Frontend**: HTML, CSS y JavaScript crudos — **sin paso de build**: el navegador ejecuta los archivos tal como están escritos
-- **Librerías**: jQuery, SortableJS (reordenamiento), RxJS, EJS (para plantillas), vendorizadas localmente en `src/vendor/` (sin CDNs, funciona offline)
-- **Servidor Web**: cualquier servidor estático; en desarrollo se usa [portless](https://portless.sh/) para HTTPS con URL estable (`https://jw-mcenter.localhost` en `main`, `https://<worktree>.jw-mcenter.localhost` en worktrees)
+```sh
+nvm use
+npm install
+npm start
+```
 
-## Estructura del Repositorio
+Comandos útiles:
 
-- **`src/`**: la aplicación (raíz web)
-  - **Panel de Control** (`src/index.html`): interfaz principal para gestionar medios y controlar presentaciones
-  - **Ventana de Presentación** (`src/presentation.html`): ventana secundaria que muestra el contenido multimedia
-- **`sandbox/`**: experimentos y POCs no conectados a la aplicación
-- **`test/`**: pruebas de humo (Playwright)
+```sh
+npm run check
+npm run build
+npm test
+```
 
-## Cómo Ejecutar
+`npm start` levanta Vite detrás de Portless para conservar HTTPS y una URL
+estable por worktree.
 
-Ver [CONTRIBUTING.md](CONTRIBUTING.md). En corto: `nvm use && npm install && npm start`, y abrir la URL de Portless en un navegador Chromium. En worktrees, la URL incluye el prefijo de la rama para poder ejecutar varias copias en paralelo.
+## Verificación
 
-## Público Objetivo
+`npm test` ejecuta:
 
-Esta aplicación está diseñada específicamente para ser utilizada por miembros de los Testigos de Jehová durante sus reuniones y eventos, facilitando la presentación de material audiovisual para apoyar su ministerio y actividades educativas religiosas.
+```sh
+npm run check
+npm run test:unit
+npm run build
+npm run test:artifacts
+playwright test
+```
 
-## Estado del Proyecto
-
-POC CU-01 + CU-02 implementado en el flujo automatizado local: agregar archivos de imagen/video/audio, seleccionar monitor secundario, abrir presentador, navegar entre medios, play/pausa, ±10s, terminar presentación y supervisar el cierre maestro/presentador. La aceptación final en hardware real debe registrarse con la lista de verificación de [TESTING.md](TESTING.md).
+La aceptación final sigue siendo una pasada manual en hardware real de doble
+pantalla. Ver [TESTING.md](TESTING.md).

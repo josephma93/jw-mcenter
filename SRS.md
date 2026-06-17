@@ -27,8 +27,8 @@ El sistema permitirá a los usuarios seleccionar y reproducir contenido multimed
 - **Screen Change Events**: Eventos del navegador que notifican cambios en la configuración de pantallas conectadas
 - **ESM**: ECMAScript Modules, sistema de módulos estándar de JavaScript
 - **ES2024**: Especificación de ECMAScript para el año 2024, que incluye las características más recientes del lenguaje JavaScript
-- **Import Maps**: Mecanismo nativo del navegador para resolver especificadores de módulos (p. ej. `'rxjs'`) a archivos locales, sin bundler
-- **Vendorización**: Copia de dependencias de terceros al repositorio (`src/vendor/`) para que la aplicación funcione sin CDNs ni conexión
+- **Vite**: Herramienta de desarrollo y build usada para servir y empaquetar la aplicación multipágina
+- **Workbox**: Librerías usadas por el service worker generado para precache y control de actualizaciones
 - **Container Queries**: Característica CSS moderna que permite aplicar estilos basados en el tamaño del contenedor, no solo de la ventana
 - **CSS Custom Properties**: Variables definidas en CSS que permiten reutilizar valores y crear temas dinámicos
 - **CSS Grid Layout**: Sistema de diseño bidimensional para CSS que permite crear layouts complejos y responsivos
@@ -58,8 +58,8 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 #### 2.4 Restricciones
 - La aplicación debe funcionar exclusivamente en navegadores basados en Chromium (Chrome, Edge, Opera, etc.)
 - Debe implementarse utilizando características modernas de JavaScript (ES2024), incluyendo pero no limitado a: ESM, generadores, async/await, top-level await, nullish coalescing, optional chaining
-- **Sin paso de build**: el navegador ejecuta directamente los archivos fuente (HTML, CSS y JavaScript crudos). No se permite compilador, transpilador ni bundler para el código de la aplicación
-- Las dependencias de terceros se gestionan con npm y se vendorizan en `src/vendor/` (sin CDNs), resolviéndose mediante import maps del navegador
+- Debe compilarse como una app multipágina con Vite, manteniendo dos entrypoints independientes: `/` y `/presentation.html`
+- Las dependencias de terceros se gestionan con npm y se integran al build de Vite; no se permiten CDNs
 - El entorno de desarrollo debe servir la aplicación sobre HTTPS con una URL estable mediante portless (`https://jw-mcenter.localhost`), garantizando el contexto seguro que requieren las APIs del navegador
 - Debe implementar características CSS de última generación como container queries, variables, custom properties y grid layouts
 - El panel de control debe ser responsivo y funcionar adecuadamente en resoluciones desde 1024×768 en adelante
@@ -107,8 +107,8 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
   - Otras características modernas disponibles en ES2024
 - **REQ-SW-05**: No debe incluir polyfills o código para compatibilidad con navegadores antiguos o no basados en Chromium.
 - **REQ-SW-06**: El código de la aplicación debe ser JavaScript puro ejecutado directamente por el navegador, sin compilación ni transpilación. Todos los archivos JavaScript deben incluir `// @ts-check` y anotaciones JSDoc (requisito obligatorio), verificados con `tsc --noEmit` — un chequeo, nunca una compilación.
-- **REQ-SW-07**: No debe existir paso de build. Las dependencias de terceros se declaran en `package.json`, se vendorizan localmente en `src/vendor/` (comprometidas en git) y se resuelven mediante import maps nativos del navegador. El ciclo de desarrollo es: editar archivo → recargar navegador.
-- **REQ-SW-08**: La aplicación debe poder servirse con cualquier servidor de archivos estáticos; en desarrollo se sirve sobre HTTPS mediante portless para garantizar un contexto seguro (`getScreenDetails()`, SharedWorker).
+- **REQ-SW-07**: Debe existir un paso de build con Vite que produzca una salida determinista en `dist/`, manteniendo los entrypoints `/` y `/presentation.html` como páginas distintas.
+- **REQ-SW-08**: La aplicación debe poder servirse como archivos estáticos desde `dist/`; en desarrollo se sirve mediante Vite detrás de portless para garantizar un contexto seguro (`getScreenDetails()`, SharedWorker).
 
 #### 3.2 Requisitos Funcionales
 
@@ -152,14 +152,14 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 - **REQ-OF-02**: Debe acceder directamente a los archivos multimedia locales referenciados.
 - **REQ-OF-03**: Debe permitir la instalación como aplicación en el dispositivo (PWA).
 - **REQ-OF-04**: No debe requerir ningún servidor para su funcionamiento, operando completamente en el cliente.
-- **REQ-OF-05**: Debe implementar un Service Worker escrito a mano (sin Workbox ni generadores), coherente con la filosofía sin build del proyecto.
+- **REQ-OF-05**: Debe implementar un Service Worker controlado por la aplicación mediante `vite-plugin-pwa` en modo `injectManifest`, con Workbox para precache y sin fallback SPA ciego.
 - **REQ-OF-06**: Debe utilizar estrategias de caché para:
   - Almacenar en caché todos los recursos estáticos (HTML, CSS, JavaScript, imágenes de la interfaz)
   - Implementar la estrategia Cache-First para recursos estáticos
   - Implementar precaching de los recursos críticos durante la instalación
   - Gestionar adecuadamente la actualización de la caché cuando se publiquen nuevas versiones
-- **REQ-OF-07**: Debe implementar estrategias para la persistencia de datos de configuración del usuario (ubicaciones de bibliotecas, listas de reproducción) utilizando IndexedDB o Cache API.
-- **REQ-OF-08**: Debe proporcionar retroalimentación visual clara sobre el estado offline/online de la aplicación.
+- **REQ-OF-07**: Debe persistir la configuración local necesaria del usuario mediante IndexedDB u otro almacenamiento cliente apropiado. No debe prometer persistencia offline automática de medios seleccionados por el usuario salvo cuando se implemente explícitamente.
+- **REQ-OF-08**: Debe proporcionar retroalimentación visual clara sobre el estado offline/listo-para-offline y sobre la disponibilidad de actualizaciones.
 
 ##### 3.2.6 Gestión de Bibliotecas Predeterminadas
 - **REQ-BD-01**: El sistema debe permitir configurar múltiples ubicaciones de bibliotecas predeterminadas para cualquier tipo de contenido multimedia (imágenes, audios, videos).
@@ -200,9 +200,9 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 - **REQ-AD-04**: Debe seguir funcionando correctamente cuando se cambia la pantalla principal del sistema.
 
 ##### 3.3.6 Entorno de Desarrollo
-- **REQ-ED-01**: El entorno de desarrollo no debe tener paso de build: editar archivo → recargar navegador.
+- **REQ-ED-01**: El entorno de desarrollo debe usar Vite para servir la app y debe poder generar `dist/` con un solo comando reproducible.
 - **REQ-ED-02**: La versión de Node (usada solo para gestión de dependencias y pruebas) debe estar fijada en `.nvmrc`.
-- **REQ-ED-03**: Las dependencias de terceros deben vendorizarse con `npm run vendor` y comprometerse en git; la aplicación no debe depender de CDNs.
+- **REQ-ED-03**: Las dependencias de terceros deben declararse en npm y resolverse en el build de Vite; la aplicación no debe depender de CDNs.
 - **REQ-ED-04**: El entorno de desarrollo debe proporcionar HTTPS local mediante portless, con URL estable `https://jw-mcenter.localhost`.
 - **REQ-ED-05**: Todos los archivos JavaScript deben comenzar con `// @ts-check` y llevar anotaciones JSDoc. `npm run check` (`tsc --noEmit`) debe pasar sin errores y se ejecuta automáticamente antes de las pruebas (`pretest`).
 - **REQ-ED-06**: Debe existir una prueba de humo automatizada (Playwright) que verifique que ambas ventanas arrancan sin errores de consola.
@@ -219,11 +219,11 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 
 ##### 3.3.8 Funcionamiento PWA y Offline
 - **REQ-PW-01**: La aplicación debe cumplir con todos los requisitos para ser considerada una PWA de alta calidad.
-- **REQ-PW-02**: Debe implementar un Service Worker escrito a mano que gestione eficientemente el caché de la aplicación.
-- **REQ-PW-03**: Debe funcionar completamente sin conexión después de la primera carga, utilizando estrategias de caché apropiadas.
+- **REQ-PW-02**: Debe implementar un Service Worker basado en `injectManifest`, donde la app conserva control explícito del flujo de actualización.
+- **REQ-PW-03**: Debe funcionar sin conexión para la shell de la aplicación después de la instalación del service worker, incluyendo `/` y `/presentation.html`, utilizando estrategias de caché apropiadas.
 - **REQ-PW-04**: Debe proporcionar un archivo de manifiesto que permita la instalación como aplicación nativa.
 - **REQ-PW-05**: Debe manejar correctamente eventos de conectividad, adaptando la interfaz para notificar al usuario sobre el estado de la conexión.
-- **REQ-PW-06**: Debe implementar actualizaciones automáticas cuando se detecte una nueva versión disponible mientras hay conexión.
+- **REQ-PW-06**: Debe detectar nuevas versiones mientras hay conexión, mostrar aviso en el panel de control y aplicar la actualización solo cuando el operador la acepte.
 - **REQ-PW-07**: Los datos de usuario (como configuraciones y listas de reproducción) deben persistir entre sesiones utilizando almacenamiento local.
 
 ### 4. Apéndices
@@ -299,4 +299,5 @@ La aplicación se ejecutará como una PWA independiente que puede instalarse en 
 | 1.3 | [Fecha actual] | Inclusión de requisitos de Workbox para Service Worker y caché offline | Claude 3.7 |
 | 1.4 | 2026-06-10 | Decisión arquitectónica: sin paso de build. Se eliminan TypeScript, Vite y Workbox; se adoptan ESM nativo, import maps, vendorización con npm y pruebas de humo | joseph montero |
 | 1.5 | 2026-06-10 | Caddy Server reemplazado por portless para HTTPS de desarrollo con URL estable | joseph montero |
-| 1.6 | 2026-06-10 | `// @ts-check` y anotaciones JSDoc pasan a ser requisito obligatorio, verificados con `tsc --noEmit` antes de cada ejecución de pruebas | joseph montero | 
+| 1.6 | 2026-06-10 | `// @ts-check` y anotaciones JSDoc pasan a ser requisito obligatorio, verificados con `tsc --noEmit` antes de cada ejecución de pruebas | joseph montero |
+| 1.7 | 2026-06-15 | Migración a Vite MPA con PWA activa, precache generado y política conservadora de actualización controlada por el operador | joseph montero |
