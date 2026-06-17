@@ -9,6 +9,7 @@
  */
 import { initSharedWorkerRxBridge } from './shared-worker-bridge.js';
 import { fromEvent, interval } from 'rxjs';
+import { MEDIA_END_EPSILON_SECONDS } from './presentation-state.mjs';
 import { registerPresenterServiceWorker } from './pwa-registration.js';
 
 /** @type {ReturnType<typeof initSharedWorkerRxBridge>} */
@@ -65,7 +66,7 @@ function isTimelinePresenterMediaType(mediaType) {
  * @returns {boolean}
  */
 function isMediaAtEnd(element) {
-  return Number.isFinite(element.duration) && element.currentTime >= element.duration - 0.05;
+  return Number.isFinite(element.duration) && element.currentTime >= element.duration - MEDIA_END_EPSILON_SECONDS;
 }
 
 /**
@@ -271,7 +272,7 @@ channels.fastForwardChannel.on.subscribe(() => {
   if (currentMediaElement && isMediaElement(currentMediaElement)) {
     const duration = currentMediaElement.duration || Infinity;
     currentMediaElement.currentTime = Math.min(currentMediaElement.currentTime + 10, duration);
-    if (Number.isFinite(duration) && currentMediaElement.currentTime >= duration - 0.05) {
+    if (isMediaAtEnd(currentMediaElement)) {
       currentMediaElement.pause();
       broadcastPlaybackState();
     }
@@ -308,6 +309,7 @@ interval(200).subscribe(() => {
     isMediaElement(currentMediaElement)
   ) {
     channels.mediaTimeUpdateChannel.send.next({
+      mediaUrl: currentMediaElement.src,
       currentTime: currentMediaElement.currentTime,
       duration: currentMediaDuration,
       timestamp: Date.now(),
@@ -327,7 +329,10 @@ if (overlay) {
       console.error('Fullscreen error:', err);
     }
 
-    if (currentMediaElement && isMediaElement(currentMediaElement)) {
+    // Only (re)start playback when autoplay was blocked — the overlay click is
+    // the user gesture that unblocks it. Don't resurrect media the operator
+    // paused on purpose and then re-entered fullscreen on.
+    if (pendingPlayRetry && currentMediaElement && isMediaElement(currentMediaElement)) {
       void tryPlayMedia(currentMediaElement);
       schedulePlaybackKick(currentMediaElement);
     }
@@ -338,10 +343,13 @@ fromEvent(document, 'fullscreenchange').subscribe(() => {
   if (!overlay) return;
   if (document.fullscreenElement) {
     overlay.style.display = 'none';
+    // Recover blocked autoplay (pendingPlayRetry) or kick a freshly-loaded
+    // element that hasn't started yet, but leave intentionally-paused media
+    // paused so entering fullscreen never resurrects it.
     if (
       currentMediaElement &&
       isMediaElement(currentMediaElement) &&
-      (pendingPlayRetry || currentMediaElement.paused || currentMediaElement.currentTime < 0.05)
+      (pendingPlayRetry || currentMediaElement.currentTime < 0.05)
     ) {
       tryPlayCurrentElement(currentMediaElement, true);
       schedulePlaybackKick(currentMediaElement);

@@ -13,6 +13,7 @@ import {
     currentItemIndex,
     itemAtIndex,
     isPlaybackReportForCurrentItem,
+    MEDIA_END_EPSILON_SECONDS,
     resolveCurrentItem,
     stepCurrentItem,
     toBlankMediaPayload,
@@ -546,17 +547,25 @@ function initialize(fileManager, screenManager, configManager) {
             }
         });
 
-    channels.mediaTimeUpdateChannel.on.subscribe(/** @param {{ currentTime?: unknown, duration?: unknown }} payload */ (payload) => {
+    channels.mediaTimeUpdateChannel.on.subscribe(/** @param {{ mediaUrl?: unknown, currentTime?: unknown, duration?: unknown }} payload */ (payload) => {
         renderPlaybackTimeUpdate(payload);
 
         const currentTime = Number(payload.currentTime);
         const duration = Number(payload.duration);
         if (
             isPlayingSubject.getValue() &&
+            // Same guard as the playback-state path: ignore end-of-media reports
+            // about a medium we already navigated away from, so an in-flight
+            // tail update can't pause the item that is actually playing now.
+            isPlaybackReportForCurrentItem(
+                presenterAliveSubject.getValue(),
+                currentItemSubject.getValue(),
+                payload
+            ) &&
             Number.isFinite(currentTime) &&
             Number.isFinite(duration) &&
             duration > 0 &&
-            currentTime >= duration - 0.05
+            currentTime >= duration - MEDIA_END_EPSILON_SECONDS
         ) {
             isPlayingSubject.next(false);
         }

@@ -24,6 +24,15 @@
 const PLAYABLE_DETECTED_TYPES = new Set(['isVideo', 'isAudio']);
 
 /**
+ * Tolerance (seconds) for treating a medium as finished. Some codecs report a
+ * duration slightly longer than the last decodable frame, so `currentTime`
+ * never reaches `duration` exactly; this slack lets both the presenter and the
+ * control panel agree on "reached the end". Shared so the threshold lives in
+ * one place instead of being duplicated across modules.
+ */
+export const MEDIA_END_EPSILON_SECONDS = 0.05;
+
+/**
  * @typedef {Object} UpdateMediaPayload
  * @property {string} mediaUrl Empty string when mediaType is 'blank'.
  * @property {PresenterMediaType} mediaType

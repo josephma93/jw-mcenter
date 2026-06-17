@@ -30,7 +30,6 @@ import { clearBlankImage, getBlankImage, setBlankImage } from './config-store.mj
  */
 const MAX_BLANK_IMAGE_BYTES = 10 * 1024 * 1024;
 
-/** @type {JQuery<HTMLElement>} */ let $configBtn;
 /** @type {JQuery<HTMLElement>} */ let $selectBlankImageBtn;
 /** @type {JQuery<HTMLInputElement>} */ let $blankImageInput;
 /** @type {JQuery<HTMLImageElement>} */ let $blankImagePreview;
@@ -154,7 +153,7 @@ async function handleRemove() {
 }
 
 async function initialize() {
-    $configBtn = $('#configBtn');
+    const $configBtn = $('#configBtn');
     $selectBlankImageBtn = $('#selectBlankImageBtn');
     $blankImageInput = /** @type {JQuery<HTMLInputElement>} */ ($('#blankImageInput'));
     $blankImagePreview = /** @type {JQuery<HTMLImageElement>} */ ($('#blankImagePreview'));
