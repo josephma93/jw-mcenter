@@ -328,15 +328,17 @@ select {
 }
 
 .presentation-primary-row {
-    display: grid;
-    grid-template-columns: minmax(170px, auto) minmax(260px, 1fr) auto;
-    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
     gap: 14px;
 }
 
 .presentation-title {
     display: flex;
     flex-direction: column;
+    flex: 1 1 13rem;
+    justify-content: center;
     gap: 3px;
     min-width: 0;
 }
@@ -354,10 +356,11 @@ select {
 }
 
 .monitor-picker {
-    display: grid;
-    grid-template-columns: auto minmax(180px, 1fr);
+    display: flex;
+    flex: 999 1 20rem;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 8px 12px;
     min-width: 0;
     padding: 8px 10px;
     border: 1px solid var(--border);
@@ -366,13 +369,15 @@ select {
 }
 
 .monitor-picker label {
+    flex: 0 1 auto;
     color: var(--text-muted);
     font-size: 0.84rem;
     font-weight: 700;
-    white-space: nowrap;
+    min-width: 0;
 }
 
 .monitor-picker select {
+    flex: 1 1 15rem;
     min-width: 0;
     width: 100%;
     background: var(--surface);
@@ -385,7 +390,7 @@ select {
 
 .monitor-option {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: clamp(3.25rem, 8vw, 5.25rem) minmax(0, 1fr);
     align-items: center;
     gap: 10px;
     min-width: 0;
@@ -403,6 +408,7 @@ select {
     font-weight: 700;
     line-height: 1.2;
     color: var(--text);
+    overflow-wrap: anywhere;
 }
 
 .monitor-option-meta {
@@ -410,13 +416,14 @@ select {
     font-size: 0.78rem;
     line-height: 1.2;
     color: var(--text-muted);
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 
 .monitor-option-map {
     display: block;
-    width: 84px;
-    height: 44px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 84 / 44;
     flex: none;
 }
 
@@ -452,7 +459,9 @@ select {
 
     .monitor-picker .monitor-select {
         padding: 0 .5em 0 0;
-        min-width: 320px;
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
         min-height: 50px;
         border-radius: 10px;
         border-color: #cbd5e1;
@@ -509,8 +518,7 @@ select {
     }
 
     .monitor-select selectedcontent .monitor-option-map {
-        width: 84px;
-        height: 32px;
+        aspect-ratio: 84 / 32;
     }
 
     .monitor-select selectedcontent .monitor-option-meta {
@@ -559,14 +567,23 @@ select {
 
 .session-actions {
     display: flex;
+    flex: 1 1 16rem;
     flex-wrap: wrap;
+    align-items: stretch;
     justify-content: flex-end;
     gap: 8px;
+    min-width: 0;
+    margin-left: auto;
+}
+
+.session-actions > button {
+    flex: 1 1 10.5rem;
+    min-width: 0;
 }
 
 .presentation-runtime-row {
-    display: grid;
-    grid-template-columns: minmax(220px, 1fr) minmax(480px, auto);
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 14px;
     padding-top: 10px;
@@ -575,6 +592,7 @@ select {
 }
 
 .now-playing-copy {
+    flex: 1 1 18rem;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
@@ -649,8 +667,9 @@ select {
 }
 
 .runtime-transport {
-    display: grid;
-    grid-template-columns: minmax(170px, 280px) auto;
+    display: flex;
+    flex: 1 1 26rem;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: end;
     gap: 14px;
@@ -659,6 +678,7 @@ select {
 
 .runtime-progress {
     display: flex;
+    flex: 1 1 13rem;
     align-items: center;
     gap: 10px;
     min-width: 0;
@@ -671,6 +691,7 @@ select {
 
 .control-toolbar {
     display: flex;
+    flex: 0 1 auto;
     flex-wrap: nowrap;
     align-items: center;
     justify-content: center;
@@ -725,24 +746,14 @@ select {
         width: min(520px, calc(100vw - 20px));
     }
 
-    .section-header,
-    .presentation-primary-row,
-    .presentation-runtime-row,
-    .runtime-transport {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
     .section-header {
         flex-direction: column;
         align-items: stretch;
     }
 
-    .monitor-picker {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
     .session-actions {
         justify-content: flex-start;
+        margin-left: 0;
     }
 
     .now-playing-copy {
