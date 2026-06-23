@@ -30,6 +30,7 @@ import ejs from './browser-ejs.js';
  * @property {number} browserTop
  * @property {number} browserW
  * @property {number} browserH
+ * @property {string} label
  */
 
 // Global BehaviorSubject for the selected monitor
@@ -135,8 +136,72 @@ function processScreenData(screens) {
             browserTop,
             browserW,
             browserH,
+            label: screen.label,
         };
     });
+}
+
+/**
+ * @typedef {Object} ScreenPreviewBox
+ * @property {RefinedScreen} screen
+ * @property {number} x
+ * @property {number} y
+ * @property {number} width
+ * @property {number} height
+ * @property {number} browserX
+ * @property {number} browserY
+ * @property {number} browserWidth
+ * @property {number} browserHeight
+ */
+
+/**
+ * @typedef {Object} ScreenPreviewLayout
+ * @property {number} width
+ * @property {number} height
+ * @property {ScreenPreviewBox[]} boxes
+ */
+
+/**
+ * @param {RefinedScreen[]} refinedScreens
+ * @param {number} width
+ * @param {number} height
+ * @param {number} inset
+ * @returns {ScreenPreviewLayout}
+ */
+function computeScreenPreviewLayout(refinedScreens, width, height, inset) {
+    const { totalWidth, totalHeight } = refinedScreens[0];
+    const scaleX = (width - inset * 2) / totalWidth;
+    const scaleY = (height - inset * 2) / totalHeight;
+    const scale = Math.min(scaleX, scaleY);
+    const originX = (width - totalWidth * scale) / 2;
+    const originY = (height - totalHeight * scale) / 2;
+
+    return {
+        width,
+        height,
+        boxes: refinedScreens.map(screen => {
+            const x = originX + screen.offsetX * scale;
+            const y = originY + screen.offsetY * scale;
+            const boxWidth = screen.availWidth * scale;
+            const boxHeight = screen.availHeight * scale;
+            const browserX = x + ((screen.browserLeft - screen.availLeft) * scale);
+            const browserY = y + ((screen.browserTop - screen.availTop) * scale);
+            const browserWidth = screen.browserW * scale;
+            const browserHeight = screen.browserH * scale;
+
+            return {
+                screen,
+                x,
+                y,
+                width: boxWidth,
+                height: boxHeight,
+                browserX,
+                browserY,
+                browserWidth,
+                browserHeight,
+            };
+        }),
+    };
 }
 
 /** @param {RefinedScreen[]} refinedScreens */
@@ -145,24 +210,15 @@ function renderScreenPreview(refinedScreens) {
     const canvasWidth = Math.max(1, rect.width);
     const canvasHeight = Math.max(1, rect.height);
     const pixelRatio = window.devicePixelRatio || 1;
+    const inset = Math.max(6, Math.min(12, Math.min(canvasWidth, canvasHeight) * 0.04));
+    const preview = computeScreenPreviewLayout(refinedScreens, canvasWidth, canvasHeight, inset);
     canvas.width = Math.round(canvasWidth * pixelRatio);
     canvas.height = Math.round(canvasHeight * pixelRatio);
     canvasContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
-    const { totalWidth, totalHeight } = refinedScreens[0];
-    const inset = Math.max(6, Math.min(12, Math.min(canvasWidth, canvasHeight) * 0.04));
-    const scaleX = (canvasWidth - inset * 2) / totalWidth;
-    const scaleY = (canvasHeight - inset * 2) / totalHeight;
-    const scale = Math.min(scaleX, scaleY);
-    const originX = (canvasWidth - totalWidth * scale) / 2;
-    const originY = (canvasHeight - totalHeight * scale) / 2;
 
-    refinedScreens.forEach((scr) => {
-        const { index, isPrimary, isBrowserScreen, availWidth, availHeight, offsetX, offsetY } = scr;
-        const scaledX = originX + offsetX * scale;
-        const scaledY = originY + offsetY * scale;
-        const scaledW = availWidth * scale;
-        const scaledH = availHeight * scale;
+    preview.boxes.forEach(({ screen, x, y, width, height, browserX, browserY, browserWidth, browserHeight }) => {
+        const { index, isPrimary, isBrowserScreen } = screen;
 
         // Colorblind-friendly colors (Okabe-Ito palette)
         let fillColor = '#56B4E9'; // Secondary: Sky Blue
@@ -172,29 +228,22 @@ function renderScreenPreview(refinedScreens) {
             strokeColor = '#006f5b'; // Dark green outline
         }
         canvasContext.fillStyle = fillColor;
-        canvasContext.fillRect(scaledX, scaledY, scaledW, scaledH);
+        canvasContext.fillRect(x, y, width, height);
         canvasContext.lineWidth = isPrimary ? 3 : 2;
         canvasContext.strokeStyle = strokeColor;
-        canvasContext.strokeRect(scaledX, scaledY, scaledW, scaledH);
+        canvasContext.strokeRect(x, y, width, height);
 
         if (isBrowserScreen) {
-            const { browserLeft, browserTop, browserW, browserH } = scr;
-            const winOffsetX = (browserLeft - scr.availLeft);
-            const winOffsetY = (browserTop - scr.availTop);
-            const scaledWinX = scaledX + (winOffsetX * scale);
-            const scaledWinY = scaledY + (winOffsetY * scale);
-            const scaledWinW = browserW * scale;
-            const scaledWinH = browserH * scale;
             canvasContext.fillStyle = 'rgba(230, 159, 0, 0.3)';
-            canvasContext.fillRect(scaledWinX, scaledWinY, scaledWinW, scaledWinH);
+            canvasContext.fillRect(browserX, browserY, browserWidth, browserHeight);
             canvasContext.strokeStyle = '#D55E00';
             canvasContext.lineWidth = 1;
-            canvasContext.strokeRect(scaledWinX, scaledWinY, scaledWinW, scaledWinH);
+            canvasContext.strokeRect(browserX, browserY, browserWidth, browserHeight);
         }
         canvasContext.fillStyle = 'black';
         const labelFontSize = Math.round(Math.max(11, Math.min(16, canvasHeight * 0.12)));
         canvasContext.font = `${labelFontSize}px sans-serif`;
-        canvasContext.fillText((index + 1).toString(), scaledX + 5, scaledY + labelFontSize + 4);
+        canvasContext.fillText((index + 1).toString(), x + 5, y + labelFontSize + 4);
     });
 }
 
@@ -219,36 +268,156 @@ function initializeMonitorFlyout() {
     });
 }
 
+/**
+ * @param {RefinedScreen} screen
+ * @returns {string}
+ */
+function formatMonitorResolution(screen) {
+    return `${screen.availWidth}x${screen.availHeight}`;
+}
+
+/**
+ * @param {string} label
+ * @returns {string}
+ */
+function normalizeMonitorLabel(label) {
+    return label.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * @param {RefinedScreen} screen
+ * @returns {string}
+ */
+function getMonitorFallbackText(screen) {
+    const normalizedLabel = normalizeMonitorLabel(screen.label);
+    if (normalizedLabel) {
+        return `Monitor ${screen.index + 1} - ${normalizedLabel} - ${formatMonitorResolution(screen)}`;
+    }
+    return `Monitor ${screen.index + 1} - ${formatMonitorResolution(screen)}`;
+}
+
+/**
+ * @param {RefinedScreen} screen
+ * @returns {string}
+ */
+function getMonitorMetaText(screen) {
+    const normalizedLabel = normalizeMonitorLabel(screen.label);
+    if (normalizedLabel) {
+        return `${normalizedLabel} · ${formatMonitorResolution(screen)}`;
+    }
+    return formatMonitorResolution(screen);
+}
+
+/**
+ * @param {RefinedScreen[]} refinedScreens
+ * @param {number} targetIndex
+ * @returns {SVGElement}
+ */
+function createMonitorArrangementNode(refinedScreens, targetIndex) {
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const width = 84;
+    const height = 44;
+    const preview = computeScreenPreviewLayout(refinedScreens, width, height, 4);
+    const svg = /** @type {SVGSVGElement} */ (document.createElementNS(svgNs, 'svg'));
+    svg.classList.add('monitor-option-map');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('width', String(width));
+    svg.setAttribute('height', String(height));
+
+    const backdrop = document.createElementNS(svgNs, 'rect');
+    backdrop.setAttribute('class', 'monitor-option-map-backdrop');
+    backdrop.setAttribute('x', '0');
+    backdrop.setAttribute('y', '0');
+    backdrop.setAttribute('width', String(width));
+    backdrop.setAttribute('height', String(height));
+    backdrop.setAttribute('rx', '7');
+    svg.append(backdrop);
+
+    preview.boxes.forEach(({ screen, x, y, width: boxWidth, height: boxHeight, browserX, browserY, browserWidth, browserHeight }) => {
+        const screenRect = document.createElementNS(svgNs, 'rect');
+        screenRect.setAttribute('class', `monitor-option-screen${screen.index === targetIndex ? ' is-target-screen' : ''}`);
+        screenRect.setAttribute('x', x.toFixed(2));
+        screenRect.setAttribute('y', y.toFixed(2));
+        screenRect.setAttribute('width', boxWidth.toFixed(2));
+        screenRect.setAttribute('height', boxHeight.toFixed(2));
+        screenRect.setAttribute('rx', '3.5');
+        svg.append(screenRect);
+
+        if (screen.isBrowserScreen) {
+            const browserMarker = document.createElementNS(svgNs, 'rect');
+            browserMarker.setAttribute('class', 'monitor-option-screen-window');
+            browserMarker.setAttribute('x', browserX.toFixed(2));
+            browserMarker.setAttribute('y', browserY.toFixed(2));
+            browserMarker.setAttribute('width', browserWidth.toFixed(2));
+            browserMarker.setAttribute('height', browserHeight.toFixed(2));
+            browserMarker.setAttribute('rx', '2');
+            svg.append(browserMarker);
+        }
+    });
+
+    return svg;
+}
+
+/**
+ * @param {RefinedScreen[]} refinedScreens
+ * @param {RefinedScreen} screen
+ * @returns {HTMLOptionElement}
+ */
+function createMonitorOption(refinedScreens, screen) {
+    const option = document.createElement('option');
+    option.value = String(screen.index);
+    option.textContent = getMonitorFallbackText(screen);
+
+    const content = document.createElement('span');
+    content.className = 'monitor-option';
+
+    content.append(createMonitorArrangementNode(refinedScreens, screen.index));
+
+    const copy = document.createElement('span');
+    copy.className = 'monitor-option-copy';
+
+    const title = document.createElement('span');
+    title.className = 'monitor-option-title';
+    title.textContent = `Monitor ${screen.index + 1}`;
+
+    const meta = document.createElement('span');
+    meta.className = 'monitor-option-meta';
+    meta.textContent = getMonitorMetaText(screen);
+
+    copy.append(title, meta);
+    content.append(copy);
+    option.replaceChildren(content);
+
+    return option;
+}
+
 /** @param {RefinedScreen[]} refinedScreens */
 function renderAvailableMonitorsSelect(refinedScreens) {
     const secondaries = refinedScreens.filter(screen => !screen.isBrowserScreen);
     const currentSelected = selectedMonitorSubject.value
         ? String(selectedMonitorSubject.value.index)
         : String($monitorSelect.val() || '');
+    const selectElement = /** @type {HTMLSelectElement} */ ($monitorSelect[0]);
 
-    $monitorSelect.empty();
+    selectElement.querySelectorAll('option').forEach(option => option.remove());
 
     if (secondaries.length === 0) {
-        $monitorSelect.append(
-            $('<option>')
-                .val('')
-                .text('No hay pantalla disponible')
-                .prop('disabled', true)
-                .prop('selected', true)
-        );
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.disabled = true;
+        emptyOption.selected = true;
+        emptyOption.textContent = 'No hay pantalla disponible';
+        selectElement.append(emptyOption);
         return;
     }
 
     secondaries.forEach(scr => {
-        const value = scr.index;
-        const role = scr.isPrimary ? 'principal' : 'secundario';
-        const option = $('<option>')
-            .val(value)
-            .text(`Monitor ${scr.index + 1} - ${role} - ${scr.availWidth}x${scr.availHeight}`);
-        if (value.toString() === currentSelected) {
-            option.attr('selected', 'selected');
+        const option = createMonitorOption(refinedScreens, scr);
+        if (option.value === currentSelected) {
+            option.selected = true;
         }
-        $monitorSelect.append(option);
+        selectElement.append(option);
     });
 }
 
