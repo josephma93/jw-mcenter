@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "start": "portless run --name jw-mcenter -- vite --host 127.0.0.1",
+    "generate:icons": "node scripts/generate-icons.mjs",
     "build": "vite build",
     "bundle": "vite build",
     "preview": "vite preview",
