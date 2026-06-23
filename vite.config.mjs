@@ -1,45 +1,186 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import Beasties from 'beasties';
+import sharp from 'sharp';
+import { minify as minifyHtml } from 'html-minifier-terser';
+import { optimize as optimizeSvg } from 'svgo';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const projectRoot = path.resolve(import.meta.dirname, 'src');
 const outputDir = path.resolve(import.meta.dirname, 'dist');
+const htmlMinifierOptions = {
+    collapseBooleanAttributes: true,
+    collapseWhitespace: true,
+    conservativeCollapse: true,
+    decodeEntities: true,
+    minifyCSS: true,
+    minifyJS: true,
+    noNewlinesBeforeTagClose: true,
+    removeComments: true,
+    removeEmptyAttributes: true,
+    removeRedundantAttributes: true,
+    removeScriptTypeAttributes: true,
+    removeStyleLinkTypeAttributes: true,
+    useShortDoctype: true,
+};
 
 /**
  * @param {string} dir
- * @returns {Promise<void>}
+ * @returns {Promise<string[]>}
  */
-async function removeDotStoreFiles(dir) {
+async function collectFiles(dir) {
     /** @type {import('node:fs').Dirent[]} */
     let entries;
     try {
         entries = await fs.readdir(dir, { withFileTypes: true });
     } catch (error) {
         if (/** @type {NodeJS.ErrnoException} */ (error).code === 'ENOENT') {
-            return;
+            return [];
         }
         throw error;
     }
 
-    await Promise.all(entries.map(async entry => {
+    const nestedFiles = await Promise.all(entries.map(async entry => {
         const entryPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
-            await removeDotStoreFiles(entryPath);
-            return;
+            return collectFiles(entryPath);
         }
-        if (entry.name === '.DS_Store') {
-            await fs.rm(entryPath, { force: true });
-        }
+        return [entryPath];
     }));
+
+    return nestedFiles.flat();
 }
 
-function stripDotStorePlugin() {
+/**
+ * @param {string} filePath
+ * @returns {Promise<void>}
+ */
+async function minifyHtmlFile(filePath) {
+    const source = await fs.readFile(filePath, 'utf8');
+    const minified = await minifyHtml(
+        source.replaceAll(' data-beasties-container', ''),
+        htmlMinifierOptions
+    );
+    await fs.writeFile(filePath, minified);
+}
+
+/**
+ * @param {string} filePath
+ * @returns {Promise<void>}
+ */
+async function inlineCriticalCssFile(filePath) {
+    const source = await fs.readFile(filePath, 'utf8');
+    if (!source.includes('rel="stylesheet"') && !source.includes("rel='stylesheet'")) {
+        return;
+    }
+
+    const beasties = new Beasties({
+        compress: true,
+        inlineFonts: true,
+        logLevel: 'silent',
+        path: outputDir,
+        preload: 'media',
+        pruneSource: false,
+        publicPath: '/',
+    });
+
+    const processed = await beasties.process(source);
+    await fs.writeFile(filePath, processed);
+}
+
+/**
+ * @param {string} filePath
+ * @returns {Promise<void>}
+ */
+async function optimizeAssetFile(filePath) {
+    const extension = path.extname(filePath).toLowerCase();
+    const original = await fs.readFile(filePath);
+    /** @type {Buffer | null} */
+    let optimized = null;
+
+    switch (extension) {
+        case '.png':
+            optimized = await sharp(original)
+                .png({
+                    compressionLevel: 9,
+                    effort: 10,
+                    progressive: true,
+                })
+                .toBuffer();
+            break;
+        case '.jpg':
+        case '.jpeg':
+            optimized = await sharp(original)
+                .jpeg({
+                    mozjpeg: true,
+                    progressive: true,
+                    quality: 82,
+                })
+                .toBuffer();
+            break;
+        case '.webp':
+            optimized = await sharp(original)
+                .webp({
+                    effort: 6,
+                    quality: 82,
+                })
+                .toBuffer();
+            break;
+        case '.avif':
+            optimized = await sharp(original)
+                .avif({
+                    effort: 9,
+                    quality: 55,
+                })
+                .toBuffer();
+            break;
+        case '.svg': {
+            const result = optimizeSvg(original.toString('utf8'), {
+                multipass: true,
+                path: filePath,
+            });
+            if ('data' in result) {
+                optimized = Buffer.from(result.data);
+            }
+            break;
+        }
+    }
+
+    if (!optimized || optimized.length >= original.length) {
+        return;
+    }
+
+    await fs.writeFile(filePath, optimized);
+}
+
+function optimizeDistPlugin() {
     return {
-        name: 'jw-mcenter-strip-dot-store',
+        name: 'jw-mcenter-optimize-dist',
         apply: 'build',
         async closeBundle() {
-            await removeDotStoreFiles(outputDir);
+            const files = await collectFiles(outputDir);
+            const htmlFiles = [];
+            const assetFiles = [];
+
+            for (const filePath of files) {
+                if (path.basename(filePath) === '.DS_Store') {
+                    await fs.rm(filePath, { force: true });
+                    continue;
+                }
+                if (filePath.endsWith('.html')) {
+                    htmlFiles.push(filePath);
+                    continue;
+                }
+                assetFiles.push(filePath);
+            }
+
+            for (const filePath of htmlFiles) {
+                await inlineCriticalCssFile(filePath);
+                await minifyHtmlFile(filePath);
+            }
+
+            await Promise.all(assetFiles.map(filePath => optimizeAssetFile(filePath)));
         },
     };
 }
@@ -49,6 +190,8 @@ export default defineConfig({
     root: projectRoot,
     publicDir: 'public',
     build: {
+        cssMinify: 'lightningcss',
+        minify: 'esbuild',
         outDir: '../dist',
         emptyOutDir: true,
         rollupOptions: {
@@ -59,7 +202,6 @@ export default defineConfig({
         },
     },
     plugins: [
-        stripDotStorePlugin(),
         VitePWA({
             strategies: 'injectManifest',
             srcDir: 'js',
@@ -98,5 +240,6 @@ export default defineConfig({
                 rollupFormat: 'es',
             },
         }),
+        optimizeDistPlugin(),
     ],
 });

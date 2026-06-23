@@ -17,6 +17,22 @@ function assertExists(relativePath) {
 }
 
 /**
+ * @param {string} relativePath
+ * @returns {string}
+ */
+function readText(relativePath) {
+    return fs.readFileSync(path.join(distDir, relativePath), 'utf8');
+}
+
+/**
+ * @param {string} html
+ * @returns {string}
+ */
+function stripClientTemplateScripts(html) {
+    return html.replace(/<script type="text\/html"[\s\S]*?<\/script>/g, '');
+}
+
+/**
  * @param {string} dir
  * @returns {string[]}
  */
@@ -55,4 +71,30 @@ test('production build emits the required multi-page PWA artifacts', () => {
 
     const dotStoreFiles = findDotStoreFiles(distDir);
     assert.deepEqual(dotStoreFiles, [], 'dist/ must not contain .DS_Store files.');
+});
+
+test('production HTML is minified and includes critical CSS inline', () => {
+    const controlHtml = readText('index.html');
+    const presenterHtml = readText('presentation.html');
+
+    assert.match(
+        controlHtml,
+        /<style\b[^>]*>[\s\S]+?<\/style>/,
+        'Expected index.html to inline critical CSS.'
+    );
+    assert.match(
+        presenterHtml,
+        /<style\b[^>]*>[\s\S]+?<\/style>/,
+        'Expected presentation.html to keep inline critical CSS.'
+    );
+
+    assert.ok(
+        !controlHtml.includes('<!--') && !presenterHtml.includes('<!--'),
+        'Expected minified HTML to strip comments.'
+    );
+
+    const controlNewlines = stripClientTemplateScripts(controlHtml).match(/\n/g)?.length ?? 0;
+    const presenterNewlines = stripClientTemplateScripts(presenterHtml).match(/\n/g)?.length ?? 0;
+    assert.ok(controlNewlines <= 3, 'Expected index.html to be minified to a compact form.');
+    assert.ok(presenterNewlines <= 3, 'Expected presentation.html to be minified to a compact form.');
 });
