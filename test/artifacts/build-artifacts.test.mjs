@@ -127,3 +127,30 @@ test('embedded EJS templates are compacted inside production HTML', () => {
         );
     }
 });
+
+test('production HTML and manifest stay portable across deployment subpaths', () => {
+    const controlHtml = readText('index.html');
+    const presenterHtml = readText('presentation.html');
+    const manifestJson = readText('manifest.json');
+
+    assert.ok(
+        controlHtml.includes('href="./manifest.json"'),
+        'Expected index.html to reference the manifest relatively.'
+    );
+    assert.ok(
+        !controlHtml.includes('href="/manifest.json"'),
+        'Expected index.html to avoid root-absolute manifest URLs.'
+    );
+    assert.ok(
+        !controlHtml.includes('src="/assets/') && !controlHtml.includes('href="/assets/'),
+        'Expected index.html asset URLs to avoid root-absolute /assets paths.'
+    );
+    assert.ok(
+        !presenterHtml.includes('src="/assets/') && !presenterHtml.includes('href="/assets/'),
+        'Expected presentation.html asset URLs to avoid root-absolute /assets paths.'
+    );
+
+    const manifest = JSON.parse(manifestJson);
+    assert.equal(manifest.start_url, './', 'Expected manifest start_url to stay relative.');
+    assert.equal(manifest.scope, './', 'Expected manifest scope to stay relative.');
+});

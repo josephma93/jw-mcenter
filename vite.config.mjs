@@ -9,6 +9,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 const projectRoot = path.resolve(import.meta.dirname, 'src');
 const outputDir = path.resolve(import.meta.dirname, 'dist');
+const deployBase = './';
 const htmlMinifierOptions = {
     collapseBooleanAttributes: true,
     collapseWhitespace: true,
@@ -121,7 +122,7 @@ async function inlineCriticalCssFile(filePath) {
         path: outputDir,
         preload: 'media',
         pruneSource: false,
-        publicPath: '/',
+        publicPath: deployBase,
     });
 
     const processed = await beasties.process(source);
@@ -226,6 +227,7 @@ function optimizeDistPlugin() {
 
 export default defineConfig({
     appType: 'mpa',
+    base: deployBase,
     root: projectRoot,
     publicDir: 'public',
     build: {
@@ -257,8 +259,8 @@ export default defineConfig({
             manifest: {
                 name: 'Jehovah Witnesses Multimedia Center',
                 short_name: 'JW MCenter',
-                start_url: '/',
-                scope: '/',
+                start_url: './',
+                scope: './',
                 display: 'fullscreen',
                 background_color: '#f4f4f4',
                 theme_color: '#000000',
@@ -276,7 +278,7 @@ export default defineConfig({
                 ],
             },
             injectManifest: {
-                rollupFormat: 'es',
+                rollupFormat: 'iife',
             },
         }),
         optimizeDistPlugin(),
