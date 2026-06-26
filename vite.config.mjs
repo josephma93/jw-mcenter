@@ -24,6 +24,16 @@ const htmlMinifierOptions = {
     removeStyleLinkTypeAttributes: true,
     useShortDoctype: true,
 };
+const templateMinifierOptions = {
+    collapseBooleanAttributes: true,
+    collapseWhitespace: true,
+    conservativeCollapse: true,
+    continueOnParseError: true,
+    decodeEntities: true,
+    ignoreCustomFragments: [/<%[\s\S]*?%>/],
+    removeComments: true,
+    removeRedundantAttributes: true,
+};
 
 /**
  * @param {string} dir
@@ -58,11 +68,40 @@ async function collectFiles(dir) {
  */
 async function minifyHtmlFile(filePath) {
     const source = await fs.readFile(filePath, 'utf8');
+    const withMinifiedTemplates = await minifyEmbeddedHtmlTemplates(source);
     const minified = await minifyHtml(
-        source.replaceAll(' data-beasties-container', ''),
+        withMinifiedTemplates.replaceAll(' data-beasties-container', ''),
         htmlMinifierOptions
     );
     await fs.writeFile(filePath, minified);
+}
+
+/**
+ * @param {string} html
+ * @returns {Promise<string>}
+ */
+async function minifyEmbeddedHtmlTemplates(html) {
+    const templatePattern = /(<script\b[^>]*type=(["'])text\/html\2[^>]*>)([\s\S]*?)(<\/script>)/gi;
+    const parts = [];
+    let lastIndex = 0;
+
+    for (const match of html.matchAll(templatePattern)) {
+        const [fullMatch, openingTag, , templateBody, closingTag] = match;
+        const matchIndex = match.index ?? 0;
+        parts.push(html.slice(lastIndex, matchIndex));
+
+        const minifiedBody = await minifyHtml(templateBody, templateMinifierOptions);
+        parts.push(`${openingTag}${minifiedBody.trim()}${closingTag}`);
+
+        lastIndex = matchIndex + fullMatch.length;
+    }
+
+    if (parts.length === 0) {
+        return html;
+    }
+
+    parts.push(html.slice(lastIndex));
+    return parts.join('');
 }
 
 /**

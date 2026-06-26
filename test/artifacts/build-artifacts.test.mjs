@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const distDir = path.resolve('dist');
+const sourceDir = path.resolve('src');
 
 /**
  * @param {string} relativePath
@@ -30,6 +31,17 @@ function readText(relativePath) {
  */
 function stripClientTemplateScripts(html) {
     return html.replace(/<script type="text\/html"[\s\S]*?<\/script>/g, '');
+}
+
+/**
+ * @param {string} html
+ * @param {string} id
+ * @returns {string | null}
+ */
+function extractTemplateBody(html, id) {
+    const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = html.match(new RegExp(`<script type="text/html" id="${escapedId}">([\\s\\S]*?)<\\/script>`));
+    return match?.[1] ?? null;
 }
 
 /**
@@ -97,4 +109,21 @@ test('production HTML is minified and includes critical CSS inline', () => {
     const presenterNewlines = stripClientTemplateScripts(presenterHtml).match(/\n/g)?.length ?? 0;
     assert.ok(controlNewlines <= 3, 'Expected index.html to be minified to a compact form.');
     assert.ok(presenterNewlines <= 3, 'Expected presentation.html to be minified to a compact form.');
+});
+
+test('embedded EJS templates are compacted inside production HTML', () => {
+    const sourceHtml = fs.readFileSync(path.join(sourceDir, 'index.html'), 'utf8');
+    const builtHtml = readText('index.html');
+
+    for (const templateId of ['legendTemplate', 'fileItemTemplate']) {
+        const sourceTemplate = extractTemplateBody(sourceHtml, templateId);
+        const builtTemplate = extractTemplateBody(builtHtml, templateId);
+
+        assert.ok(sourceTemplate, `Expected source template "${templateId}" to exist.`);
+        assert.ok(builtTemplate, `Expected built template "${templateId}" to exist.`);
+        assert.ok(
+            builtTemplate.length < sourceTemplate.length,
+            `Expected built template "${templateId}" to be smaller than its source form.`
+        );
+    }
 });
